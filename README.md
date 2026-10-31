@@ -56,7 +56,7 @@ adds nothing.
 
 - **On the activity:** the fields show above the charts. Which fields show is chosen per sport, and
   they can go into the summary layout.
-- **List and totals:** custom fields work as columns and in filters.
+- **Filters:** in the activity list and on the totals page, filters can use custom fields, e.g. `SummitCount` at least 1 for all your summit days.
 - **Fitness charts:** `SummitCount` (summed per day) and `HighestPoint` (maximum per day) can be
   plotted; on a weekly or monthly scale you get summits per week or month.
 - **Search:** Intervals' search looks at names and descriptions, not at custom fields. Turn on

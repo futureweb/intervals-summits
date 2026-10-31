@@ -30,3 +30,14 @@ jobs:
         run: npm install --no-save playwright && npx playwright install --with-deps chromium
       - run: pytest -q -rs
       - run: intervals-summits --version
+  # what publish.yml builds on a release, checked on every push
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade build twine
+      - run: python -m build && python -m twine check dist/*
+      - run: pip install dist/*.whl && intervals-summits --version

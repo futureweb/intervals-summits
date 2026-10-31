@@ -99,6 +99,20 @@ def test_a_failed_write_does_not_stop_the_others(tmp_path):
     assert [p[0] for p in ctx.iv.puts] == ["i2", "i1"]
 
 
+def test_deleted_activities_leave_once_a_day(tmp_path):
+    acts = [hike("i1", "2020-05-01"), hike("i2", "2026-10-30")]
+    ctx, _ = make(tmp_path, acts, {"i1": STREAMS, "i2": STREAMS})
+    ctx.store.put("last_full_check", "2026-10-31")
+    from intervals_summits.sync import backfill
+    backfill(ctx, date(2020, 1, 1), date(2026, 10, 31), apply=False)
+    assert {r[0] for r in ctx.store.db.execute("SELECT id FROM activities")} == {"i1", "i2"}
+    ctx.iv.acts.pop(0)                                              # i1 deleted in Intervals
+    sync(ctx, apply=False, today=date(2026, 10, 31))                # checked today already
+    assert ctx.store.activity("i1") is not None
+    sync(ctx, apply=False, today=date(2026, 11, 1))
+    assert ctx.store.activity("i1") is None and ctx.store.visits("i1") == [] and ctx.counts["forgotten"] == 1
+
+
 def test_track_not_there_yet_is_asked_again(tmp_path):
     acts = [hike("i1", "2026-10-31")]
     ctx, _ = make(tmp_path, acts, {"i1": []})                      # just uploaded: no streams yet

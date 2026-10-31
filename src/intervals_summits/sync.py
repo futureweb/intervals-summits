@@ -187,9 +187,21 @@ def sync(ctx: Context, *, apply: bool, force: bool = False, today: date | None =
     if last:
         oldest = min(oldest, max(date.fromisoformat(last) - timedelta(days=1), today - timedelta(days=s.catchup_days)))
     process_window(ctx, oldest, today + timedelta(days=1), apply=apply, force=force, today=today)
+    forget_deleted(ctx, today)
     if apply:
         ctx.store.put("last_sync", today.isoformat())
         ctx.store.put("last_sync_at", datetime.now().isoformat(timespec="seconds"))
+
+
+def forget_deleted(ctx: Context, today: date) -> None:
+    """Once a day: activities deleted in Intervals leave the summit log too (one small request, ids only)."""
+    if ctx.store.get("last_full_check") == today.isoformat():
+        return
+    first = ctx.store.db.execute("SELECT MIN(substr(start, 1, 10)) FROM activities").fetchone()[0]
+    if first:
+        ids = {a["id"] for a in ctx.iv.activities(date.fromisoformat(first), today + timedelta(days=1), ["id"])}
+        ctx.counts["forgotten"] += ctx.store.forget_missing(first, (today + timedelta(days=1)).isoformat(), ids)
+    ctx.store.put("last_full_check", today.isoformat())
 
 
 def backfill(ctx: Context, oldest: date, newest: date, *, apply: bool, force: bool = False, recompute: bool = False) -> None:

@@ -35,8 +35,13 @@ def write_page(ctx: Context) -> None:
 
 
 def ensure_fields(ctx: Context) -> None:
+    """Create missing fields – checked once a day (the list of custom items is not small)."""
+    key = ",".join(ctx.settings.fields)
+    if ctx.store.get("fields_checked") == f"{date.today()} {key}":
+        return
     for code in F.ensure(ctx.iv, ctx.settings.fields, ctx.settings.language, True)["missing"]:
         ctx.counts[f"field_created_{code}"] += 1
+    ctx.store.put("fields_checked", f"{date.today()} {key}")
 
 
 def report(ctx: Context, apply: bool, **extra) -> None:

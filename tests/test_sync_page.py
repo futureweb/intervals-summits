@@ -81,6 +81,37 @@ def test_sync_writes_then_leaves_alone(tmp_path):
     assert ctx.iv.puts == []
 
 
+def test_a_failed_write_does_not_stop_the_others(tmp_path):
+    import requests
+    acts = [hike("i1", "2026-10-30"), hike("i2", "2026-10-30")]
+    ctx, _ = make(tmp_path, acts, {"i1": STREAMS, "i2": STREAMS})
+    real = ctx.iv.update_activity
+
+    def flaky(aid, values):
+        if aid == "i1":
+            raise requests.HTTPError("502 Server Error")
+        return real(aid, values)
+    ctx.iv.update_activity = flaky
+    sync(ctx, apply=True, today=date(2026, 10, 31))
+    assert ctx.counts["write_failed"] == 1 and [p[0] for p in ctx.iv.puts] == ["i2"]
+    ctx.iv.update_activity = real                                   # next run: i1 gets its values
+    sync(ctx, apply=True, today=date(2026, 10, 31))
+    assert [p[0] for p in ctx.iv.puts] == ["i2", "i1"]
+
+
+def test_track_not_there_yet_is_asked_again(tmp_path):
+    acts = [hike("i1", "2026-10-31")]
+    ctx, _ = make(tmp_path, acts, {"i1": []})                      # just uploaded: no streams yet
+    sync(ctx, apply=True, today=date(2026, 10, 31))
+    assert ctx.counts["no_gps"] == 1 and ctx.iv.puts == []
+    ctx.iv.streams_by_id["i1"] = STREAMS
+    sync(ctx, apply=True, today=date(2026, 10, 31))
+    assert ctx.iv.puts and ctx.iv.puts[0][1]["Summits"] == "Gscheuerkopf (1180 m)"
+    ctx.counts.clear()
+    sync(ctx, apply=True, today=date(2026, 11, 10))                 # an old one without GPS stays as it is
+    assert ctx.counts["matched"] == 0
+
+
 def test_description_line_is_opt_in_and_written_once(tmp_path):
     acts = [hike("i1", "2026-10-30", description="Nice day")]
     ctx, _ = make(tmp_path, acts, {"i1": STREAMS}, description=True, fields=("Summits",))

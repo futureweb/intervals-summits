@@ -57,7 +57,8 @@ class IntervalsClient:
                 log.info("Intervals asks to slow down (429); waiting %.0f s", pause)
                 self.sleep(pause)
                 continue
-            if response.status_code in (502, 503, 504) and method == "GET" and attempt < 3:
+            # GET and PUT are safe to send again (a PUT of the same values changes nothing twice)
+            if response.status_code in (502, 503, 504) and method in ("GET", "PUT") and attempt < 3:
                 self.sleep(20.0 * (attempt + 1))
                 continue
             response.raise_for_status()

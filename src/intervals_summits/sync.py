@@ -11,6 +11,8 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
+import requests
+
 from . import fields as F
 from .config import INDOOR, Settings
 from .intervals import IntervalsClient
@@ -70,19 +72,28 @@ def read_track(ctx: Context, a: dict) -> dict:
     return track
 
 
-def needs_matching(ctx: Context, a: dict, recompute: bool) -> bool:
+RETRY_NO_GPS_DAYS = 2      # right after an upload Intervals may not have the track yet: ask again
+
+
+def needs_matching(ctx: Context, a: dict, recompute: bool, today: date | None = None) -> bool:
     row = ctx.store.activity(a["id"])
-    return recompute or row is None or row["algo"] != ALGO
+    if recompute or row is None or row["algo"] != ALGO:
+        return True
+    started = (a.get("start_date_local") or "")[:10]
+    if row["status"] == "no_gps" and started >= ((today or date.today()) - timedelta(days=RETRY_NO_GPS_DAYS)).isoformat():
+        ctx.store.drop_track(a["id"])
+        return True
+    return False
 
 
 def process_window(ctx: Context, oldest: date, newest: date, *, apply: bool, force: bool = False,
-                   recompute: bool = False) -> None:
+                   recompute: bool = False, today: date | None = None) -> None:
     s = ctx.settings
     acts = ctx.iv.activities(oldest, newest, list_fields(s))
     ctx.counts["listed"] += len(acts)
     ctx.counts["forgotten"] += ctx.store.forget_missing(oldest.isoformat(), newest.isoformat(), {a["id"] for a in acts})
     outdoor_acts = [a for a in acts if outdoor(a, s)]
-    todo = [a for a in outdoor_acts if needs_matching(ctx, a, recompute)]
+    todo = [a for a in outdoor_acts if needs_matching(ctx, a, recompute, today)]
     if todo:
         log.info("%s – %s: %d outdoor activities, %d to match", oldest, newest, len(outdoor_acts), len(todo))
     # 1. tracks (and the cells they need)
@@ -148,7 +159,12 @@ def process_window(ctx: Context, oldest: date, newest: date, *, apply: bool, for
         if writes:
             ctx.counts["activities_to_write"] += 1
             if apply:
-                ctx.iv.update_activity(a["id"], writes)
+                try:
+                    ctx.iv.update_activity(a["id"], writes)
+                except requests.RequestException as exc:     # the next run tries again
+                    log.warning("Activity %s: not written (%s)", a["id"], exc)
+                    ctx.counts["write_failed"] += 1
+                    continue
                 # for the description only our line counts as written, not the whole text
                 ctx.store.record_written(a["id"], {k: (adopted_line if k == "description" else v) for k, v in writes.items()})
                 ctx.counts["activities_written"] += 1
@@ -170,7 +186,7 @@ def sync(ctx: Context, *, apply: bool, force: bool = False, today: date | None =
     last = ctx.store.get("last_sync")
     if last:
         oldest = min(oldest, max(date.fromisoformat(last) - timedelta(days=1), today - timedelta(days=s.catchup_days)))
-    process_window(ctx, oldest, today + timedelta(days=1), apply=apply, force=force)
+    process_window(ctx, oldest, today + timedelta(days=1), apply=apply, force=force, today=today)
     if apply:
         ctx.store.put("last_sync", today.isoformat())
         ctx.store.put("last_sync_at", datetime.now().isoformat(timespec="seconds"))

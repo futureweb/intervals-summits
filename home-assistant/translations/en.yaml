@@ -1,0 +1,22 @@
+configuration:
+  intervals_api_key:
+    name: Intervals API key
+    description: Intervals.icu → Settings → Developer Settings. The same key as the Garmin bridge's is fine.
+  write_to_intervals:
+    name: Write to Intervals
+    description: Off = a dry run – the summit log fills, nothing is written to Intervals. On = the fields are written.
+  language:
+    name: Language
+    description: Names of the fields it creates, and the summit log page (en or de).
+  description_line:
+    name: Line in the description
+    description: Also "⛰️ Summits …" in the activity description, so Intervals' search finds your summits. Only that line is ever touched.
+  huts_passes:
+    name: Huts and passes field
+    description: An extra text field HutsPasses with the huts and passes of each activity.
+  types:
+    name: Only these activity types
+    description: Comma-separated, e.g. Hike,BackcountrySki. Empty = every outdoor type.
+  backfill_from:
+    name: Backfill from (YYYY-MM-DD)
+    description: Goes through your past activities from this date once, at the next start (and once more when writing is switched on).

@@ -1,0 +1,11 @@
+.git
+.github
+.venv
+data
+tests
+home-assistant
+deploy
+examples
+docs
+**/__pycache__
+*.sqlite

@@ -1,0 +1,5 @@
+# Home Assistant app repository: add https://github.com/futureweb/intervals-summits
+# under Settings -> Apps -> App store -> ⋮ -> Repositories. The app is in home-assistant/.
+name: Intervals Summits
+url: https://github.com/futureweb/intervals-summits
+maintainer: Futureweb (https://github.com/futureweb)

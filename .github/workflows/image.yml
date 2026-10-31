@@ -1,0 +1,74 @@
+# Container image on the GitHub Container Registry, for amd64 and arm64 (NAS boxes).
+# A release publishes <version> and latest; the manual trigger builds the ref it runs on under the
+# given tag and moves latest only when asked to.
+# Docker Hub: set the repository variable DOCKERHUB_IMAGE (e.g. futurewebat/intervals-summits)
+# and the secrets DOCKERHUB_USERNAME / DOCKERHUB_TOKEN, and the same image is pushed there too.
+name: Container image
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to publish (e.g. edge); the ref the workflow runs on is built"
+        required: true
+      latest:
+        description: "Also move the latest tag (a release always does)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Docker Hub (optional)
+        if: ${{ vars.DOCKERHUB_IMAGE != '' }}
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Image tags
+        id: tags
+        shell: bash
+        env:                                   # inputs reach the shell as data, never as script
+          EVENT: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          MOVE_LATEST: ${{ github.event_name == 'release' || inputs.latest }}
+          HUB_IMAGE: ${{ vars.DOCKERHUB_IMAGE }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$EVENT" = "release" ]; then v="${GITHUB_REF_NAME#v}"; else v="$INPUT_TAG"; fi
+          [[ "$v" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]] || { echo "invalid image tag: $v"; exit 1; }
+          images="ghcr.io/${REPO}"
+          if [ -n "$HUB_IMAGE" ]; then images="${images} ${HUB_IMAGE}"; fi
+          tags=""
+          for image in $images; do
+            tags="${tags:+${tags},}${image}:${v}"
+            if [ "$MOVE_LATEST" = "true" ]; then tags="${tags},${image}:latest"; fi
+          done
+          echo "tags=${tags}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=Summits, huts and passes on your Intervals.icu activities, from your GPS tracks and OpenStreetMap
+            org.opencontainers.image.licenses=MIT
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

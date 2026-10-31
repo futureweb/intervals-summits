@@ -1,0 +1,35 @@
+# intervals-summits on a Linux server, as its own unprivileged user (useradd --system summits).
+# Settings and the Intervals key: /etc/intervals-summits/env (root:summits 0640), e.g.
+#   INTERVALS_API_KEY=...   SUMMITS_DATA_DIR=/var/lib/intervals-summits   SUMMITS_LANGUAGE=en
+# Installed with: python3 -m venv /opt/intervals-summits/venv && /opt/intervals-summits/venv/bin/pip install intervals-summits
+# The timer starts it every 15 minutes. The past once by hand:
+#   sudo -u summits /opt/intervals-summits/venv/bin/intervals-summits backfill --from 2015-01-01 --apply
+[Unit]
+Description=intervals-summits: summits on Intervals.icu activities
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=summits
+Group=summits
+UMask=0027
+WorkingDirectory=/var/lib/intervals-summits
+EnvironmentFile=/etc/intervals-summits/env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/intervals-summits/venv/bin/intervals-summits sync --apply
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/intervals-summits
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=512M

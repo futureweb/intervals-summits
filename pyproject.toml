@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "intervals-summits"
+version = "0.1.0"
+description = "Summits, huts and passes on your Intervals.icu activities, from your GPS tracks and OpenStreetMap – with a summit log page"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Andreas Schnederle-Wagner" }]
+requires-python = ">=3.12"
+dependencies = ["requests>=2.31"]
+keywords = ["intervals.icu", "summits", "peaks", "openstreetmap", "hiking", "ski touring"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering :: GIS",
+]
+
+[project.urls]
+Homepage = "https://github.com/futureweb/intervals-summits"
+
+[project.scripts]
+intervals-summits = "intervals_summits.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

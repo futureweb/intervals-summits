@@ -1,0 +1,34 @@
+services:
+  summits:
+    # the published image (amd64 + arm64); `docker compose build` still works from the source
+    image: ghcr.io/futureweb/intervals-summits:latest
+    build: .
+    init: true
+    env_file: .env
+    environment:
+      SUMMITS_DATA_DIR: /data
+    ports:
+      - "127.0.0.1:8766:8766"        # the summit log on http://localhost:8766/ ("8766:8766" for the whole network)
+    volumes:
+      - ./data:/data
+    # Runs as UID 10002 (see Dockerfile); the data directory must be writable by it.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    # A dry run first: `docker compose logs -f` shows what it would write. Then add "--apply"
+    # and `docker compose up -d` again. The past: `docker compose run --rm summits backfill --from 2015-01-01 --apply`.
+    command: ["run", "--ui", "--host", "0.0.0.0"]
+    healthcheck:
+      test: ["CMD", "intervals-summits", "status", "--check"]
+      interval: 5m
+      timeout: 30s
+      start_period: 2m
+      retries: 3
+
+  # Next to garmin-intervals-bridge: put this service into the bridge's compose.yaml and point
+  # env_file at the bridge's .env – the same INTERVALS_API_KEY works for both.

@@ -1,5 +1,11 @@
 # intervals-summits
 
+[![CI](https://github.com/futureweb/intervals-summits/actions/workflows/tests.yml/badge.svg)](https://github.com/futureweb/intervals-summits/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
+[![Garmin Intervals Bridge](https://img.shields.io/badge/companion-Garmin%20Intervals%20Bridge-6f42c1)](https://github.com/futureweb/garmin-intervals-bridge)
+[![Futureweb Intervals MCP](https://img.shields.io/badge/companion-Futureweb%20Intervals%20MCP-0a7bbb)](https://github.com/futureweb/intervals-mcp-server)
+
 **Summits, huts and passes on your [Intervals.icu](https://intervals.icu) activities**, found in your
 own GPS tracks with OpenStreetMap, plus your personal **summit log**.
 
@@ -15,9 +21,17 @@ own GPS tracks with OpenStreetMap, plus your personal **summit log**.
   - a searchable log, every entry linked to its activity in Intervals.
 - **It works with every activity that has a GPS track**, whatever it came from: Garmin, Wahoo, Coros,
   Suunto, Polar, a Strava import or an upload. Old ones too: one backfill matches your whole history.
-- It needs nothing but your Intervals API key. It runs **next to
-  [garmin-intervals-bridge](https://github.com/futureweb/garmin-intervals-bridge)** with the same
-  settings, but does not need it.
+- It needs nothing but your Intervals API key.
+
+**Sister projects** (each works on its own, together they do more):
+
+- [**Garmin Intervals Bridge**](https://github.com/futureweb/garmin-intervals-bridge) puts back what
+  Garmin strips from the FIT files it sends to Intervals.icu and syncs the wellness data the official
+  sync misses. intervals-summits runs next to it with the same settings, and the bridge tells it when
+  there is something new ([how](#next-to-garmin-intervals-bridge-the-bridge-says-when-there-is-something-new)).
+- [**Futureweb Intervals MCP**](https://github.com/futureweb/intervals-mcp-server) lets ChatGPT, Claude
+  and any MCP client read and analyse your Intervals data. It reads the `Summits` fields like any other,
+  so you can ask your assistant which summits you climbed this year, or how often.
 
 ## How a summit is found
 

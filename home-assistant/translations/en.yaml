@@ -29,6 +29,12 @@ configuration:
   pass_radius:
     name: Pass radius (m)
     description: 10–200 m. Empty = 60.
+  charts:
+    name: Intervals charts
+    description: Two private charts in Intervals, summits per week and per month (with Write to Intervals on).
+  collections:
+    name: Collections
+    description: "All summits of an area above a height, e.g. Tirol 3000ers=r52343>=3000; Kaisergebirge=r2115422 (the area: its OpenStreetMap name or r<relation id>)."
   backfill_from:
     name: Backfill from (YYYY-MM-DD)
     description: Goes through your past activities from this date once, at the next start (and once more when writing is switched on).

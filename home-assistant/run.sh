@@ -15,6 +15,9 @@ if [ "$(opt huts_passes)" = true ]; then FIELDS="$FIELDS,Huts,Passes"; fi
 export SUMMITS_FIELDS="$FIELDS"
 TYPES="$(opt types)"
 if [ -n "$TYPES" ]; then export SUMMITS_TYPES="$TYPES"; fi
+COLLECTIONS="$(opt collections)"
+if [ -n "$COLLECTIONS" ]; then export SUMMITS_COLLECTIONS="$COLLECTIONS"; fi
+if [ "$(opt charts)" = false ]; then export SUMMITS_CHARTS=false; fi
 for RULE in peak_radius peak_below hut_radius pass_radius; do
     VALUE="$(opt $RULE)"
     if [ -n "$VALUE" ]; then export "SUMMITS_$(echo $RULE | tr a-z A-Z)=$VALUE"; fi

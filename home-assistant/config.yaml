@@ -1,5 +1,5 @@
 name: Intervals Summits
-version: "0.1.1"
+version: "0.2.0"
 slug: intervals_summits
 description: Summits, huts and passes on your Intervals.icu activities – and your summit log in the sidebar
 url: https://github.com/futureweb/intervals-summits
@@ -20,6 +20,7 @@ options:
   language: en
   description_line: false
   huts_passes: false
+  charts: true
 schema:
   intervals_api_key: password
   write_to_intervals: bool
@@ -27,6 +28,8 @@ schema:
   description_line: bool
   huts_passes: bool
   types: str?
+  charts: bool
+  collections: str?
   peak_radius: int(10,200)?
   peak_below: int(0,500)?
   hut_radius: int(10,200)?

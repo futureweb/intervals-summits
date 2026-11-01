@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "intervals-summits"
-version = "0.2.0"
+version = "0.2.1"
 description = "Summits, huts and passes on your Intervals.icu activities, from your GPS tracks and OpenStreetMap – with a summit log page"
 readme = "README.md"
 license = "MIT"

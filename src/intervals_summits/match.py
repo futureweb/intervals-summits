@@ -31,7 +31,8 @@ def display_name(poi: dict, language: str) -> str:
 
 
 def visits(track: dict, pois: list[dict], rules: Rules = Rules(), language: str = "") -> list[dict]:
-    """[{osm, name, kind, ele, dist, idx}] in the order the track reached them; one per name and kind."""
+    """[{osm, name, kind, ele, est, dist, idx}] in the order the track reached them; one per name and kind.
+    Without a height in OpenStreetMap, `ele` is the track's altitude at its closest point and `est` True."""
     grid: dict[tuple[int, int], list[dict]] = defaultdict(list)
     for p in pois:
         grid[(int(p["lat"] // GRID), int(p["lon"] // GRID))].append(p)
@@ -52,7 +53,10 @@ def visits(track: dict, pois: list[dict], rules: Rules = Rules(), language: str 
             continue
         if p["kind"] == "peak" and p.get("ele") is not None and a is not None and a < p["ele"] - rules.peak_below:
             continue
-        out.append({"osm": p["osm"], "name": display_name(p, language), "kind": p["kind"], "ele": p.get("ele"),
+        ele, est = p.get("ele"), False
+        if ele is None and a is not None:
+            ele, est = float(round(a)), True
+        out.append({"osm": p["osm"], "name": display_name(p, language), "kind": p["kind"], "ele": ele, "est": est,
                     "dist": round(d), "idx": i})
     out.sort(key=lambda v: v["idx"])
     seen, unique = set(), []

@@ -90,7 +90,7 @@ footer{color:var(--muted);font-size:12px;margin-top:8px}
 <footer id="foot"></footer>
 </main><script>
 const V=__DATA__,P=__PLACES__,C=__COLL__,T=__TEXT__,META=__META__;const KIND=T.kind,LOC=T.locale;const $=id=>document.getElementById(id);
-const fmt=n=>n==null?"–":Math.round(n).toLocaleString(LOC)+" m";const de=d=>new Date(d+"T12:00:00").toLocaleDateString(LOC,{day:"2-digit",month:"2-digit",year:"numeric"});
+const fmt=n=>n==null?"–":Math.round(n).toLocaleString(LOC)+" m";const fv=v=>(v.est&&v.ele!=null?"≈ ":"")+fmt(v.ele);const de=d=>new Date(d+"T12:00:00").toLocaleDateString(LOC,{day:"2-digit",month:"2-digit",year:"numeric"});
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);const ACT=id=>"https://intervals.icu/activities/"+encodeURIComponent(id);
 function seg(id,opts,cur,cb){const el=$(id);el.innerHTML="";opts.forEach(([v,l])=>{const b=document.createElement("button");b.textContent=l;if(v===cur)b.className="on";b.onclick=()=>{cb(v);seg(id,opts,v,cb)};el.appendChild(b)})}
 // texts
@@ -104,7 +104,7 @@ const newThisYear=Object.values(FIRST).filter(d=>d.startsWith(META.year)).length
 // KPIs
 const distinct=new Set(V.map(v=>v.osm));const peaks=V.filter(v=>v.kind==="peak");const hi=peaks.reduce((a,b)=>(b.ele||0)>(a.ele||0)?b:a,{});
 const acts=new Set(V.map(v=>v.aid));
-$("kpis").innerHTML=[[V.length,T.kpi[0]],[distinct.size,T.kpi[1]],[peaks.length,T.kpi[2]],[acts.size,T.kpi[3]],[fmt(hi.ele),T.kpi[4]+(hi.name||"–")],[newThisYear,T.newin+" "+META.year]].map(([b,s])=>`<div class="kpi"><b>${typeof b==="number"?b.toLocaleString(LOC):b}</b><span>${esc(s)}</span></div>`).join("");
+$("kpis").innerHTML=[[V.length,T.kpi[0]],[distinct.size,T.kpi[1]],[peaks.length,T.kpi[2]],[acts.size,T.kpi[3]],[fv(hi),T.kpi[4]+(hi.name||"–")],[newThisYear,T.newin+" "+META.year]].map(([b,s])=>`<div class="kpi"><b>${typeof b==="number"?b.toLocaleString(LOC):b}</b><span>${esc(s)}</span></div>`).join("");
 // timeline: hover shows a point, a click (tap) keeps it with the link to the activity
 let span="all",SP=[],pinned=null;const wrap=$("scwrap"),tip=$("tip");
 function scatter(){if(!V.length){$("scatter").innerHTML="";return}const now=new Date(V.reduce((a,v)=>v.date>a?v.date:a,""));let from=new Date(V.reduce((a,v)=>v.date<a?v.date:a,"9999"));
@@ -119,7 +119,7 @@ function nearest(ev){const svg=wrap.querySelector("svg");if(!svg)return null;con
  let best=null,bd=(14*k)**2;for(const q of SP){const d=(q.x-qx)**2+(q.y-qy)**2;if(d<bd){bd=d;best=q}}return best}
 function show(q,pin){const hl=$("hl");if(!q){tip.hidden=true;if(hl)hl.setAttribute("visibility","hidden");return}const p=q.p;
  hl.setAttribute("cx",q.x);hl.setAttribute("cy",q.y);hl.setAttribute("visibility","visible");tip.className="tip"+(pin?" pin":"");
- tip.innerHTML=(pin?`<button class="x" aria-label="${esc(T.close)}">×</button>`:"")+`<b>${esc(p.name)}</b> · ${fmt(p.ele)}<div class="m">${esc(KIND[p.kind])} · ${de(p.date)}</div>`+
+ tip.innerHTML=(pin?`<button class="x" aria-label="${esc(T.close)}">×</button>`:"")+`<b>${esc(p.name)}</b> · ${fv(p)}<div class="m">${esc(KIND[p.kind])} · ${de(p.date)}</div>`+
   `<div>${esc(p.aname)} <span class="m">(${esc(p.type)})</span></div>`+(pin?`<a href="${ACT(p.aid)}" target="_blank" rel="noopener">${esc(T.open)}</a>`:`<div class="m">${esc(T.keep)}</div>`);
  tip.hidden=false;const r=wrap.querySelector("svg").getBoundingClientRect(),w=wrap.getBoundingClientRect(),k=r.width/1000;
  let tx=r.left-w.left+q.x*k+12,ty=r.top-w.top+q.y*k+12;if(tx+tip.offsetWidth>w.width)tx=Math.max(0,tx-tip.offsetWidth-24);if(ty+tip.offsetHeight>w.height)ty=Math.max(0,ty-tip.offsetHeight-24);
@@ -133,7 +133,7 @@ seg("span",[[1,T.spans[0]],[3,T.spans[1]],[5,T.spans[2]],["all",T.spans[3]]],"al
 let topmode="freq",topkind="all",topn=10;function renderTop(){const by={};V.filter(v=>topkind==="all"||v.kind===topkind).forEach(v=>{(by[v.osm]=by[v.osm]||{...v,n:0}).n++});
  let list=Object.values(by);list=topmode==="freq"?list.sort((a,b)=>b.n-a.n):list.filter(v=>v.ele).sort((a,b)=>b.ele-a.ele);list=list.slice(0,topn);$("toptitle").textContent=`${T.top} ${topn}`;
  const max=topmode==="freq"?list[0]?.n||1:list[0]?.ele||1;
- $("topbars").innerHTML=list.map(v=>{const val=topmode==="freq"?v.n:v.ele;return `<div class="b"><div class="name" title="${esc(KIND[v.kind])}"><span class="dot k-${v.kind}"></span>${esc(v.name)}</div><div class="track"><div class="fill" style="width:${(val/max*100).toFixed(1)}%"></div></div><div class="num">${topmode==="freq"?v.n+"×":fmt(v.ele)}</div></div>`}).join("")}
+ $("topbars").innerHTML=list.map(v=>{const val=topmode==="freq"?v.n:v.ele;return `<div class="b"><div class="name" title="${esc(KIND[v.kind])}"><span class="dot k-${v.kind}"></span>${esc(v.name)}</div><div class="track"><div class="fill" style="width:${(val/max*100).toFixed(1)}%"></div></div><div class="num">${topmode==="freq"?v.n+"×":fv(v)}</div></div>`}).join("")}
 seg("topn",[[10,"10"],[20,"20"],[50,"50"],[100,"100"]],10,v=>{topn=v;renderTop()});seg("topmode",[["freq",T.most],["high",T.high]],"freq",v=>{topmode=v;renderTop()});
 seg("topkind",Object.entries(T.kinds),"all",v=>{topkind=v;renderTop()});renderTop();
 // per year
@@ -162,7 +162,7 @@ function drawMap(){const el=$("map");if(!window.L){el.textContent=T.mapoff;retur
  const groups={peak:L.layerGroup(),hut:L.layerGroup(),pass:L.layerGroup()},pts=[];
  Object.entries(by).forEach(([osm,o])=>{const pl=P[osm],v=o.v;pts.push([pl[0],pl[1]]);
   const acts=o.acts.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6).map(a=>`<div><a href="${ACT(a.aid)}" target="_blank" rel="noopener">${de(a.date)}</a> ${esc(a.aname)}</div>`).join("");
-  const html=`<b>${esc(v.name)}</b> · ${fmt(v.ele)}<div class="m">${esc(KIND[v.kind])} · ${o.n}× · ${esc(T.firstvisit)} ${de(FIRST[osm])}</div>`+
+  const html=`<b>${esc(v.name)}</b> · ${fv(v)}<div class="m">${esc(KIND[v.kind])} · ${o.n}× · ${esc(T.firstvisit)} ${de(FIRST[osm])}</div>`+
    (pl[2]?`<div><a href="${esc(pl[2])}" target="_blank" rel="noopener">Wikipedia ↗</a></div>`:"")+acts+(o.n>6?`<div class="m">…</div>`:"");
   L.circleMarker([pl[0],pl[1]],{radius:4+Math.min(6,Math.log2(o.n)*1.5),color:col(v.kind),weight:2,fillOpacity:.55}).bindPopup(html).addTo(groups[v.kind])});
  const overlays={};["pass","hut","peak"].forEach(k=>groups[k].addTo(lmap));["peak","hut","pass"].forEach(k=>overlays[T.kinds[k]]=groups[k]);
@@ -181,7 +181,7 @@ $("ft").innerHTML=`<option value="">${esc(T.activity)}</option>`+typeList.map(t=
 let sortBy="date",dir=-1,shown=50;function renderLog(){const q=$("q").value.toLowerCase(),fy=$("fy").value,fk=$("fk").value,ft=$("ft").value;
  let rows=V.filter(v=>(!q||v.name.toLowerCase().includes(q)||(v.aname||"").toLowerCase().includes(q))&&(!fy||v.date.startsWith(fy))&&(!fk||v.kind===fk)&&(!ft||v.type===ft));
  rows.sort((a,b)=>{const x=a[sortBy]??-1,y=b[sortBy]??-1;return (x>y?1:x<y?-1:0)*dir});$("logtitle").textContent=`${T.log} (${rows.length.toLocaleString(LOC)})`;
- $("rows").innerHTML=rows.slice(0,shown).map(v=>`<tr><td><span class="dot k-${v.kind}" title="${esc(KIND[v.kind])}"></span>${esc(v.name)}${FIRST[v.osm]===v.date?`<span class="star" title="${esc(T.first)}">★</span>`:""}${P[v.osm]&&P[v.osm][2]?`<a class="w" href="${esc(P[v.osm][2])}" target="_blank" rel="noopener" title="Wikipedia">W</a>`:""}</td><td class="r">${fmt(v.ele)}</td><td class="hide"><a href="${ACT(v.aid)}" target="_blank" rel="noopener" title="${esc(v.aname)}">${esc(v.type)} ↗</a></td><td>${de(v.date)}</td></tr>`).join("");
+ $("rows").innerHTML=rows.slice(0,shown).map(v=>`<tr><td><span class="dot k-${v.kind}" title="${esc(KIND[v.kind])}"></span>${esc(v.name)}${FIRST[v.osm]===v.date?`<span class="star" title="${esc(T.first)}">★</span>`:""}${P[v.osm]&&P[v.osm][2]?`<a class="w" href="${esc(P[v.osm][2])}" target="_blank" rel="noopener" title="Wikipedia">W</a>`:""}</td><td class="r">${fv(v)}</td><td class="hide"><a href="${ACT(v.aid)}" target="_blank" rel="noopener" title="${esc(v.aname)}">${esc(v.type)} ↗</a></td><td>${de(v.date)}</td></tr>`).join("");
  $("more").style.display=rows.length>shown?"":"none"}
 document.querySelectorAll("th[data-s]").forEach(th=>th.onclick=()=>{const s=th.dataset.s;dir=sortBy===s?-dir:(s==="name"||s==="type"?1:-1);sortBy=s;renderLog()});
 ["q","fy","fk","ft"].forEach(id=>$(id).oninput=()=>{shown=50;renderLog()});$("more").onclick=()=>{shown+=100;renderLog()};renderLog();
@@ -195,7 +195,8 @@ def _script_json(value) -> str:
 
 def rows(store: Store) -> list[dict]:
     return [{"date": (v["start"] or "")[:10], "type": v["type"], "aname": v["aname"], "aid": v["activity_id"], "osm": v["osm"],
-             "name": v["name"], "kind": v["kind"], "ele": round(v["ele"]) if v["ele"] is not None else None}
+             "name": v["name"], "kind": v["kind"], "ele": round(v["ele"]) if v["ele"] is not None else None,
+             **({"est": 1} if v.get("est") else {})}
             for v in store.all_visits()]
 
 

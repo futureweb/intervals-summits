@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 – 2026-11-01
+
+- **A height for every place:** where OpenStreetMap has none, the tool takes your track's altitude at
+  its closest point, marked as an estimate: `Westliches Reifhorn (≈2470 m)` in the fields, `≈ 2,470 m`
+  on the page. Heights from OpenStreetMap stay as they are. Past activities get them with
+  `recompute --from 2010-01-01 --apply`.
+
 ## 0.2.0 – 2026-11-01
 
 - **Huts and passes in fields of their own:** `Huts` and `Passes` (`SUMMITS_FIELDS=…,Huts,Passes`; in

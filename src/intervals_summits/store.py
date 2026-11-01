@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS activities(id TEXT PRIMARY KEY, start TEXT, type TEXT, name TEXT, status TEXT,
   points INTEGER, max_alt REAL, algo INTEGER, processed_at TEXT);
 CREATE TABLE IF NOT EXISTS visits(activity_id TEXT, seq INTEGER, osm TEXT, name TEXT, kind TEXT, ele REAL, dist INTEGER,
-  PRIMARY KEY(activity_id, seq));
+  est INTEGER DEFAULT 0, PRIMARY KEY(activity_id, seq));
 CREATE TABLE IF NOT EXISTS written(activity_id TEXT, code TEXT, value TEXT, at TEXT, PRIMARY KEY(activity_id, code));
 CREATE TABLE IF NOT EXISTS pois(osm TEXT PRIMARY KEY, name TEXT, names TEXT, kind TEXT, ele REAL, lat REAL, lon REAL,
   ci INTEGER, cj INTEGER, wiki TEXT);
@@ -54,6 +54,9 @@ class Store:
         self.db = sqlite3.connect(db_file)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        if "est" not in {r[1] for r in self.db.execute("PRAGMA table_info(visits)")}:
+            with self.db:                      # 0.2.1: a height from the track where OpenStreetMap has none
+                self.db.execute("ALTER TABLE visits ADD COLUMN est INTEGER DEFAULT 0")
         if "wiki" not in {r[1] for r in self.db.execute("PRAGMA table_info(pois)")}:
             # 0.1 kept no Wikipedia links: add the column and read the cells again when next needed
             with self.db:
@@ -84,8 +87,8 @@ class Store:
                             (a["id"], a.get("start_date_local"), a.get("type"), a.get("name"), status, points,
                              max_alt, algo, now()))
             self.db.execute("DELETE FROM visits WHERE activity_id=?", (a["id"],))
-            self.db.executemany("INSERT INTO visits VALUES (?,?,?,?,?,?,?)",
-                                [(a["id"], n, v["osm"], v["name"], v["kind"], v.get("ele"), v.get("dist"))
+            self.db.executemany("INSERT INTO visits (activity_id, seq, osm, name, kind, ele, dist, est) VALUES (?,?,?,?,?,?,?,?)",
+                                [(a["id"], n, v["osm"], v["name"], v["kind"], v.get("ele"), v.get("dist"), int(bool(v.get("est"))))
                                  for n, v in enumerate(visits or [])])
 
     def refresh_activity(self, a: dict) -> None:

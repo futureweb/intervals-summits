@@ -71,7 +71,8 @@ def ensure(iv, codes: tuple[str, ...], language: str, apply: bool) -> dict:
 
 
 def text(visits: list[dict], kinds: tuple[str, ...]) -> str | None:
-    parts = [f"{v['name']} ({round(v['ele'])} m)" if v.get("ele") is not None else v["name"]
+    """"Name (2231 m)"; "≈" marks a height from the track where OpenStreetMap has none."""
+    parts = [f"{v['name']} ({'≈' if v.get('est') else ''}{round(v['ele'])} m)" if v.get("ele") is not None else v["name"]
              for v in visits if v["kind"] in kinds]
     return ", ".join(parts) or None
 

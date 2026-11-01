@@ -35,7 +35,17 @@ def test_order_dedup_and_language():
 
 def test_peak_without_height_or_altitude_counts_by_distance():
     t = track([(47.4996, 12.4)], [None])
-    assert len(visits(t, [dict(PEAK, ele=None)])) == 1
+    found = visits(t, [dict(PEAK, ele=None)])
+    assert len(found) == 1 and found[0]["ele"] is None and not found[0]["est"]
+
+
+def test_a_place_without_height_takes_the_track_s_altitude_marked_as_estimate():
+    from intervals_summits.fields import text
+    t = track([(47.499, 12.4), (47.4999, 12.4)], [1100, 1176.4])
+    found = visits(t, [dict(PEAK, ele=None)])
+    assert found[0]["ele"] == 1176 and found[0]["est"] is True
+    assert text(found, ("peak",)) == "Gscheuerkopf (≈1176 m)"
+    assert visits(t, [PEAK])[0]["est"] is False and text(visits(t, [PEAK]), ("peak",)) == "Gscheuerkopf (1180 m)"
 
 
 def test_cells_near_border_take_the_neighbour():

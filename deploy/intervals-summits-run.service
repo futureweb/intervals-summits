@@ -34,3 +34,6 @@ LockPersonality=yes
 CapabilityBoundingSet=
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

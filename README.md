@@ -84,7 +84,10 @@ line, and leaves every other character as it is. If the description already name
 - **Fitness charts:** `SummitCount` (summed per day) and `HighestPoint` (maximum per day) can be
   plotted; on a weekly or monthly scale you get summits per week or month.
 - **Search:** Intervals' search looks at names and descriptions, not at custom fields. Turn on
-  `SUMMITS_DESCRIPTION=true`, and searching "Maukspitze" finds every activity that reached it.
+  `SUMMITS_DESCRIPTION=true`, and searching a summit finds every activity that reached it, also
+  where it is not in the name:
+
+  ![Intervals' search for "Schatterberg": tours that have it in no name](docs/images/intervals-search.png)
 
 ## Installing and running
 
@@ -138,7 +141,9 @@ setups.
 | as a Home Assistant app | `http://<hostname>:8766/sync`, the hostname is on the *Info* tab of the Intervals Summits app |
 
 `POST /sync` only says "something is new": it takes no data, and summits keeps it to one sync a
-minute. `intervals-summits status` shows the bridge's last note.
+minute. `intervals-summits status` shows the bridge's last note. On a Linux server with systemd,
+[`deploy/intervals-summits-run.service`](deploy/intervals-summits-run.service) keeps it running
+(instead of the timer in `deploy/`).
 
 ### Commands
 

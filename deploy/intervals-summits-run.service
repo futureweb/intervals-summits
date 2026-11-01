@@ -1,0 +1,36 @@
+# intervals-summits kept running next to garmin-intervals-bridge: the bridge tells it about new
+# activities (BRIDGE_NOTIFY_URL=http://127.0.0.1:8766/sync in the bridge's settings), and it looks on
+# its own only every 3 hours. Instead of intervals-summits.timer, not together with it:
+#   systemctl disable --now intervals-summits.timer && systemctl enable --now intervals-summits-run.service
+# Settings, user and installation as in intervals-summits.service. The summit log: http://127.0.0.1:8766/
+[Unit]
+Description=intervals-summits: summits on Intervals.icu activities
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=60
+User=summits
+Group=summits
+UMask=0027
+WorkingDirectory=/var/lib/intervals-summits
+EnvironmentFile=/etc/intervals-summits/env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/intervals-summits/venv/bin/intervals-summits run --apply --ui --host 127.0.0.1 --port 8766
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/intervals-summits
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=512M

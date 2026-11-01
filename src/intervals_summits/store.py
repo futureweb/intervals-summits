@@ -19,9 +19,10 @@ CREATE TABLE IF NOT EXISTS visits(activity_id TEXT, seq INTEGER, osm TEXT, name 
   PRIMARY KEY(activity_id, seq));
 CREATE TABLE IF NOT EXISTS written(activity_id TEXT, code TEXT, value TEXT, at TEXT, PRIMARY KEY(activity_id, code));
 CREATE TABLE IF NOT EXISTS pois(osm TEXT PRIMARY KEY, name TEXT, names TEXT, kind TEXT, ele REAL, lat REAL, lon REAL,
-  ci INTEGER, cj INTEGER);
+  ci INTEGER, cj INTEGER, wiki TEXT);
 CREATE INDEX IF NOT EXISTS pois_cell ON pois(ci, cj);
 CREATE TABLE IF NOT EXISTS cells(ci INTEGER, cj INTEGER, fetched_at TEXT, PRIMARY KEY(ci, cj));
+CREATE TABLE IF NOT EXISTS collections(key TEXT PRIMARY KEY, label TEXT, fetched_at TEXT, members TEXT);
 """
 
 
@@ -29,10 +30,16 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def atomic_write(path: Path, data: bytes) -> None:
+def atomic_write(path: Path, data: bytes, *, readable: bool = False) -> None:
+    """Write via a temporary file and rename. `readable`: as a file created normally would be (the
+    umask decides), not 0600 – for a page a web server serves."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
     try:
+        if readable:
+            mask = os.umask(0)
+            os.umask(mask)
+            os.fchmod(fd, 0o666 & ~mask)
         with os.fdopen(fd, "wb") as f:
             f.write(data)
         os.replace(tmp, path)
@@ -47,6 +54,11 @@ class Store:
         self.db = sqlite3.connect(db_file)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        if "wiki" not in {r[1] for r in self.db.execute("PRAGMA table_info(pois)")}:
+            # 0.1 kept no Wikipedia links: add the column and read the cells again when next needed
+            with self.db:
+                self.db.execute("ALTER TABLE pois ADD COLUMN wiki TEXT")
+                self.db.execute("UPDATE cells SET fetched_at='1970-01-01T00:00:00+00:00'")
         self.tracks_dir = tracks_dir
 
     def close(self) -> None:
@@ -129,12 +141,28 @@ class Store:
         with self.db:
             for cell in cells:
                 self.db.execute("DELETE FROM pois WHERE ci=? AND cj=?", cell)
-            self.db.executemany("INSERT OR REPLACE INTO pois VALUES (?,?,?,?,?,?,?,?,?)",
+            self.db.executemany("INSERT OR REPLACE INTO pois (osm, name, names, kind, ele, lat, lon, ci, cj, wiki) "
+                                "VALUES (?,?,?,?,?,?,?,?,?,?)",
                                 [(p["osm"], p["name"], json.dumps(p.get("names") or {}, ensure_ascii=False), p["kind"],
-                                  p.get("ele"), p["lat"], p["lon"], p["ci"], p["cj"])
+                                  p.get("ele"), p["lat"], p["lon"], p["ci"], p["cj"], p.get("wiki"))
                                  for p in pois if (p["ci"], p["cj"]) in cells])
             stamp = now()
             self.db.executemany("INSERT OR REPLACE INTO cells VALUES (?,?,?)", [(i, j, stamp) for i, j in cells])
+
+    def places(self) -> dict[str, dict]:
+        """Where the visited places are, and their Wikipedia link (for the map and the log)."""
+        return {r["osm"]: dict(r) for r in self.db.execute(
+            "SELECT osm, lat, lon, wiki FROM pois WHERE osm IN (SELECT DISTINCT osm FROM visits)")}
+
+    # ---- collections (all summits of an area above a height) ----
+    def collection(self, key: str) -> dict | None:
+        row = self.db.execute("SELECT * FROM collections WHERE key=?", (key,)).fetchone()
+        return dict(row, members=json.loads(row["members"])) if row else None
+
+    def save_collection(self, key: str, label: str, members: list[dict]) -> None:
+        with self.db:
+            self.db.execute("INSERT OR REPLACE INTO collections VALUES (?,?,?,?)",
+                            (key, label, now(), json.dumps(members, ensure_ascii=False)))
 
     def pois_in(self, cells: set[tuple[int, int]]) -> list[dict]:
         out = []

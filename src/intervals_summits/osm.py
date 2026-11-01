@@ -11,6 +11,7 @@ import re
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Callable
+from urllib.parse import quote
 
 import requests
 
@@ -30,6 +31,30 @@ QUERY = """[out:json][timeout:300];
   way["tourism"~"^(alpine_hut|wilderness_hut)$"]["name"]({b});
 );
 out center tags;"""
+# a collection: every named summit inside an area (by name, or r<relation id>), coordinates included
+COLLECTION_QUERY = """[out:json][timeout:300];
+{area}->.a;
+node["natural"~"^(peak|volcano)$"]["name"](area.a);
+out;"""
+
+
+def area_filter(area: str) -> str:
+    if re.fullmatch(r"r\d+", area):
+        return f"area(id:{3600000000 + int(area[1:])})"
+    return 'area["name"="' + area.replace("\\", "\\\\").replace('"', '\\"') + '"]'
+
+
+def collection_members(elements: list[dict], min_ele: int = 0) -> list[dict]:
+    out = {}
+    for el in elements:
+        tags = el.get("tags") or {}
+        height = ele(tags.get("ele"))
+        if el.get("type") != "node" or not tags.get("name") or el.get("lat") is None:
+            continue
+        if min_ele and (height is None or height < min_ele):
+            continue
+        out[el["id"]] = {"osm": f"node/{el['id']}", "name": tags["name"], "ele": height, "lat": el["lat"], "lon": el["lon"]}
+    return list(out.values())
 
 Cell = tuple[int, int]
 
@@ -86,6 +111,24 @@ def ele(text: str | None) -> float | None:
     return float(found.group(1).replace(",", ".")) if found else None
 
 
+def wiki(tags: dict) -> str | None:
+    """OpenStreetMap's link to an article: "de:Maukspitze", else the Wikidata item "wikidata:Q123"."""
+    if tags.get("wikipedia") and ":" in tags["wikipedia"]:
+        return tags["wikipedia"]
+    return f"wikidata:{tags['wikidata']}" if tags.get("wikidata") else None
+
+
+def wiki_url(value: str | None) -> str | None:
+    if not value or ":" not in value:
+        return None
+    lang, title = value.split(":", 1)
+    if lang == "wikidata":
+        return "https://www.wikidata.org/wiki/" + quote(title.strip())
+    if not lang.isalpha() or len(lang) > 12:
+        return None
+    return f"https://{lang}.wikipedia.org/wiki/" + quote(title.strip().replace(" ", "_"))
+
+
 def parse(elements: list[dict]) -> list[dict]:
     out = {}
     for el in elements:
@@ -105,7 +148,8 @@ def parse(elements: list[dict]) -> list[dict]:
         ci, cj = cell_of(lat, lon)
         osm = f"{el['type']}/{el['id']}"
         out[osm] = {"osm": osm, "name": tags["name"], "kind": kind, "ele": ele(tags.get("ele")), "lat": lat, "lon": lon,
-                    "ci": ci, "cj": cj, "names": {k[5:]: v for k, v in tags.items() if k.startswith("name:") and len(k) <= 8}}
+                    "ci": ci, "cj": cj, "names": {k[5:]: v for k, v in tags.items() if k.startswith("name:") and len(k) <= 8},
+                    "wiki": wiki(tags)}
     return list(out.values())
 
 
@@ -141,13 +185,20 @@ class OSM:
                 self.sleep(self.pause)
         return len(groups)
 
+    def collection(self, c) -> list[dict]:
+        """The summits of one collection (one query; the caller keeps them for half a year)."""
+        return collection_members(self._post(COLLECTION_QUERY.format(area=area_filter(c.area))), c.min_ele)
+
     def _query(self, box: str) -> list[dict]:
+        return self._post(QUERY.format(b=box))
+
+    def _post(self, query: str) -> list[dict]:
         response = None
         for wait in (0, 30, 90, 180, 300, 600):
             self.sleep(wait)
             self.queries += 1
             try:
-                response = self.session.post(self.url, data={"data": QUERY.format(b=box)}, timeout=360)
+                response = self.session.post(self.url, data={"data": query}, timeout=360)
             except requests.RequestException as exc:
                 log.info("OpenStreetMap: %s, trying again", exc.__class__.__name__)
                 continue

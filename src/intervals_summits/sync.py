@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import requests
 
@@ -174,7 +174,8 @@ def process_window(ctx: Context, oldest: date, newest: date, *, apply: bool, for
 
 def description_write(ctx: Context, a: dict, last: dict, force: bool) -> tuple[str, str | None, str | None]:
     """The verdict, the whole new description (only when writing) and our line in it."""
-    line = F.description_line(ctx.store.visits(a["id"]), a.get("description"), ctx.settings.language)
+    line = F.description_line(ctx.store.visits(a["id"]), a.get("description"), ctx.settings.language,
+                              F.line_kinds(ctx.settings.fields))
     verdict = F.decide("description", line, F.our_line(a.get("description")), last.get("description"), force)
     return verdict, F.with_line(a.get("description"), line) if verdict == "write" else None, line
 
@@ -217,6 +218,7 @@ def sync(ctx: Context, *, apply: bool, force: bool = False, today: date | None =
         oldest = min(oldest, max(date.fromisoformat(last) - timedelta(days=1), today - timedelta(days=s.catchup_days)))
     process_window(ctx, oldest, today + timedelta(days=1), apply=apply, force=force, today=today)
     forget_deleted(ctx, today)
+    ensure_collections(ctx)
     if apply:
         ctx.store.put("last_sync", today.isoformat())
         ctx.store.put("last_sync_at", datetime.now().isoformat(timespec="seconds"))
@@ -237,3 +239,24 @@ def backfill(ctx: Context, oldest: date, newest: date, *, apply: bool, force: bo
     for start, end in windows(oldest, newest):
         process_window(ctx, start, end, apply=apply, force=force, recompute=recompute)
         log.info("%s – %s done: %s", start, end, dict(ctx.counts))
+    ensure_collections(ctx)
+
+
+COLLECTION_DAYS = 180       # a collection's summits are read again after half a year
+
+
+def ensure_collections(ctx: Context) -> None:
+    """The summits of each SUMMITS_COLLECTIONS area, once and then every half year (one query each)."""
+    limit = datetime.now(timezone.utc) - timedelta(days=COLLECTION_DAYS)
+    for c in ctx.settings.collections:
+        got = ctx.store.collection(c.key)
+        if got and datetime.fromisoformat(got["fetched_at"]) > limit:
+            continue
+        try:
+            members = ctx.osm.collection(c)
+        except Exception as exc:  # noqa: BLE001 – the summits go on; the next run tries again
+            log.warning("Collection %s: OpenStreetMap not read (%s)", c.label, exc)
+            continue
+        ctx.store.save_collection(c.key, c.label, members)
+        ctx.counts["collections_read"] += 1
+        log.info("Collection %s: %d summits", c.label, len(members))

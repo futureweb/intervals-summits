@@ -12,8 +12,8 @@ configuration:
     name: Line in the description
     description: Also "⛰️ Summits …" in the activity description, so Intervals' search finds your summits. Only that line is ever touched.
   huts_passes:
-    name: Huts and passes field
-    description: An extra text field HutsPasses with the huts and passes of each activity.
+    name: Huts and passes
+    description: Two more text fields, Huts and Passes, with the huts and passes of each activity – and in the description line too, when it is on.
   types:
     name: Only these activity types
     description: Comma-separated, e.g. Hike,BackcountrySki. Empty = every outdoor type.

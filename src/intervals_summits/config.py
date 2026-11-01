@@ -7,6 +7,7 @@ already set in the environment always win.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -16,8 +17,39 @@ OVERPASS = "https://overpass-api.de/api/interpreter"
 # indoor and virtual types: no track worth asking for ("Other" may well have one: paragliding, ...)
 INDOOR = frozenset({"VirtualRide", "VirtualRun", "VirtualRow", "VirtualSki", "Elliptical", "Workout", "WeightTraining",
                     "Yoga", "Pilates", "Crossfit", "StairStepper", "Rowing", "Swim", "HighIntensityIntervalTraining"})
-ALL_FIELDS = ("Summits", "SummitCount", "HighestPoint", "HutsPasses")
+ALL_FIELDS = ("Summits", "SummitCount", "HighestPoint", "Huts", "Passes", "HutsPasses")
 DEFAULT_FIELDS = ("Summits", "SummitCount", "HighestPoint")
+# the map of the summit log: OpenTopoMap shows the mountains (light use, with attribution)
+OPENTOPOMAP = {"url": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", "sub": "abc",
+               "attribution": 'Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, '
+                              'SRTM · style © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)'}
+
+
+@dataclass(frozen=True)
+class Collection:
+    """All summits of an area above a height, e.g. "Tirol 3000ers=Tirol>=3000"."""
+    label: str
+    area: str                     # the area's name in OpenStreetMap, or r<relation id> when a name is ambiguous
+    min_ele: int = 0
+
+    @property
+    def key(self) -> str:
+        return f"{self.area}>={self.min_ele}"
+
+
+def collections(value: str | None) -> tuple[Collection, ...]:
+    out = []
+    for part in (value or "").split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        label, _, spec = part.partition("=") if "=" in part.split(">=")[0] else ("", "", part)
+        found = re.fullmatch(r"\s*(.+?)\s*(?:>=\s*(\d+))?\s*", spec)
+        if not found or not found.group(1).strip() or found.group(1).lstrip().startswith(">"):
+            raise SystemExit(f"SUMMITS_COLLECTIONS: {part!r} – e.g. Tirol 3000ers=Tirol>=3000")
+        area = found.group(1).strip()
+        out.append(Collection(label.strip() or area, area, int(found.group(2) or 0)))
+    return tuple(out)
 
 
 def read_env_file(path: Path) -> dict[str, str]:
@@ -93,10 +125,19 @@ class Settings:
     hut_radius: float = 60.0
     pass_radius: float = 60.0
     page_title: str = ""
+    map_tiles: dict | None = field(default_factory=lambda: dict(OPENTOPOMAP))    # None: no map
+    collections: tuple[Collection, ...] = ()
+    charts: bool = True                  # the ready-made Intervals charts (private), made with the fields
+    page_path: Path | None = None        # where the page goes (a web server's folder, say); else the data folder
+    page_language: str = ""              # the page's language when it differs from the fields' ("" = language)
 
     @property
     def page_file(self) -> Path:
-        return self.data_dir / "summits.html"
+        return self.page_path or self.data_dir / "summits.html"
+
+    @property
+    def page_lang(self) -> str:
+        return self.page_language or self.language
 
     @property
     def db_file(self) -> Path:
@@ -139,4 +180,21 @@ def load(environ: dict[str, str] | None = None) -> Settings:
         hut_radius=_metres(env, "SUMMITS_HUT_RADIUS", 60.0, 10, 200),
         pass_radius=_metres(env, "SUMMITS_PASS_RADIUS", 60.0, 10, 200),
         page_title=env.get("SUMMITS_PAGE_TITLE") or "",
+        map_tiles=tiles(env),
+        collections=collections(env.get("SUMMITS_COLLECTIONS")),
+        charts=_bool(env.get("SUMMITS_CHARTS"), True),
+        page_path=Path(env["SUMMITS_PAGE_FILE"]).expanduser() if env.get("SUMMITS_PAGE_FILE") else None,
+        page_language=(env.get("SUMMITS_PAGE_LANGUAGE") or "").lower()[:2] if (env.get("SUMMITS_PAGE_LANGUAGE") or "")
+        .lower()[:2] in ("en", "de") else "",
     )
+
+
+def tiles(env: dict[str, str]) -> dict | None:
+    value = (env.get("SUMMITS_MAP_TILES") or "").strip()
+    if value.lower() in ("off", "false", "no", "none"):
+        return None
+    if not value:
+        return dict(OPENTOPOMAP)
+    if not value.startswith("https://") or "{z}" not in value:
+        raise SystemExit("SUMMITS_MAP_TILES: a tile URL like https://tile.example.org/{z}/{x}/{y}.png, or off")
+    return {"url": value, "sub": "abc", "attribution": env.get("SUMMITS_MAP_ATTRIBUTION") or "© OpenStreetMap contributors"}

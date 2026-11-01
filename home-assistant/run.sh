@@ -11,7 +11,7 @@ print("" if v is None else str(v).lower() if isinstance(v, bool) else v)' "$DATA
 export SUMMITS_DATA_DIR="$DATA" INTERVALS_API_KEY="$(opt intervals_api_key)" SUMMITS_LANGUAGE="$(opt language)"
 export SUMMITS_DESCRIPTION="$(opt description_line)"
 FIELDS=Summits,SummitCount,HighestPoint
-if [ "$(opt huts_passes)" = true ]; then FIELDS="$FIELDS,HutsPasses"; fi
+if [ "$(opt huts_passes)" = true ]; then FIELDS="$FIELDS,Huts,Passes"; fi
 export SUMMITS_FIELDS="$FIELDS"
 TYPES="$(opt types)"
 if [ -n "$TYPES" ]; then export SUMMITS_TYPES="$TYPES"; fi

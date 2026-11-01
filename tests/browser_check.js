@@ -20,12 +20,24 @@ const { chromium } = require(resolve());
   await p.goto('file://' + path.resolve(process.argv[2]));
   const kpi = (await p.locator('#kpis .kpi').first().innerText()).replace(/\s+/g, ' ');
   console.log('kpis=' + kpi, 'rows=' + await p.locator('#rows tr').count(), 'top=' + await p.locator('#topbars .b').count());
+  await p.locator('#scatter svg').scrollIntoViewIfNeeded();          // the map card above may push it down
   const c = await p.evaluate(() => { const q = SP[0]; const r = document.querySelector('#scatter svg').getBoundingClientRect(), k = r.width / 1000; return { x: r.left + q.x * k, y: r.top + q.y * k }; });
   await p.mouse.move(c.x + 2, c.y + 2);
   const hover = await p.locator('#tip').isVisible();
   await p.mouse.click(c.x + 2, c.y + 2);
   const href = await p.locator('#tip a').getAttribute('href');
   console.log('hover=' + hover, 'link=' + href);
+  // the map loads once it is in view: drawn with Leaflet, or (offline) the hint instead – never an error
+  await p.locator('#map').scrollIntoViewIfNeeded();
+  let map = 'none';
+  for (let i = 0; i < 40 && map === 'none'; i++) {
+    await p.waitForTimeout(250);
+    map = await p.evaluate(() => document.querySelector('#map .leaflet-marker-pane') ? 'leaflet'
+      : /internet/i.test(document.getElementById('map').textContent) ? 'offline' : 'none');
+  }
+  const markers = await p.locator('#map path.leaflet-interactive').count();
+  console.log('map=' + map, 'markers=' + markers, 'collections=' + await p.locator('#colls .b').count());
+  if (map === 'none') errors.push('the map neither drew nor said why');
   if (process.env.SCREENSHOT) await p.screenshot({ path: process.env.SCREENSHOT, fullPage: true });
   await b.close();
   if (errors.length || !hover || !href) { console.log('errors=' + JSON.stringify(errors)); process.exit(1); }

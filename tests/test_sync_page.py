@@ -184,11 +184,13 @@ def _browser() -> bool:
 
 @pytest.mark.skipif(not _browser(), reason="no playwright here (npm install playwright)")
 def test_page_runs_in_a_browser(tmp_path):
-    ctx, _ = make(tmp_path, [hike("i1", "2026-10-30")], {"i1": STREAMS})
+    from intervals_summits.config import OPENTOPOMAP, Collection
+    ctx, _ = make(tmp_path, [hike("i1", "2026-10-30")], {"i1": STREAMS}, collections=(Collection("Hausberge", "x"),))
     sync(ctx, apply=False, today=date(2026, 10, 31))
     html_file = tmp_path / "p.html"
-    page.write(ctx.store, html_file, "en")
+    page.write(ctx.store, html_file, "en", tiles=OPENTOPOMAP, wanted=ctx.settings.collections)
     out = subprocess.run(["node", str(Path(__file__).with_name("browser_check.js")), str(html_file)],
                          capture_output=True, text=True, timeout=120)
     assert out.returncode == 0, out.stdout + out.stderr
-    assert "kpis=1 entries" in out.stdout
+    assert "kpis=1 entries" in out.stdout and "collections=1" in out.stdout
+    assert "map=leaflet markers=1" in out.stdout or "map=offline" in out.stdout

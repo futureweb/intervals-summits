@@ -7,8 +7,9 @@ A value is written when the field is empty, or when it still holds what this too
 A value someone typed or another tool wrote is kept (unless --force). HighestPoint is only ever
 filled when empty: Intervals fills it from a FIT file itself (session enhanced_max_altitude).
 
-Optional (SUMMITS_DESCRIPTION=true): one line "⛰️ Summits: …" in the activity description, because
-Intervals' search looks at names and descriptions, not at custom fields. Only that line is ever
+Optional (SUMMITS_DESCRIPTION=true): one line "⛰️ Summits: … · Huts: … · Passes: …" in the activity
+description, because Intervals' search looks at names and descriptions, not at custom fields. Huts and
+passes come into it when their fields are on, and only when there were some. Only that line is ever
 touched; the rest of the description stays as it is.
 """
 from __future__ import annotations
@@ -30,6 +31,11 @@ DEFS = {
                      "fit_session_field": "enhanced_max_altitude",
                      "description": "Highest point of the activity (m): from the FIT file (session enhanced_max_altitude); "
                                     "otherwise from the altitude stream (intervals-summits)"},
+    "Huts": {"names": {"en": "Huts", "de": "Hütten"}, "type": "text", "icon": "mdi-home-variant",
+             "description": f"Huts on the activity, in order (OpenStreetMap alpine and wilderness huts within 60 m; {ATTRIBUTION})"},
+    "Passes": {"names": {"en": "Passes", "de": "Pässe"}, "type": "text", "icon": "mdi-swap-horizontal",
+               "description": f"Passes and saddles on the activity, in order (OpenStreetMap, within 60 m; {ATTRIBUTION})"},
+    # the field of 0.1: huts and passes in one, kept for whoever has it
     "HutsPasses": {"names": {"en": "Huts & passes", "de": "Hütten & Pässe"}, "type": "text", "icon": "mdi-home-variant",
                    "description": f"Huts and passes on the activity, in order (OpenStreetMap; {ATTRIBUTION})"},
 }
@@ -78,9 +84,20 @@ def wanted(visits: list[dict], max_alt: float | None, codes: tuple[str, ...]) ->
         out["SummitCount"] = sum(1 for v in visits if v["kind"] == "peak") or None
     if "HighestPoint" in codes:
         out["HighestPoint"] = round(max_alt) if max_alt is not None else None
+    if "Huts" in codes:
+        out["Huts"] = text(visits, ("hut",))
+    if "Passes" in codes:
+        out["Passes"] = text(visits, ("pass",))
     if "HutsPasses" in codes:
         out["HutsPasses"] = text(visits, ("hut", "pass"))
     return out
+
+
+def line_kinds(codes: tuple[str, ...]) -> tuple[str, ...]:
+    """What the description line names: summits, and huts and passes when their fields are on."""
+    huts = "Huts" in codes or "HutsPasses" in codes
+    passes = "Passes" in codes or "HutsPasses" in codes
+    return ("peak",) + (("hut",) if huts else ()) + (("pass",) if passes else ())
 
 
 def same(a, b) -> bool:
@@ -109,24 +126,30 @@ def decide(code: str, want, current, last: str | None, force: bool = False) -> s
     return "kept"
 
 
-DESCRIPTION_LABELS = {"en": "Summits", "de": "Gipfel"}
+DESCRIPTION_LABELS = {"en": {"peak": "Summits", "hut": "Huts", "pass": "Passes"},
+                      "de": {"peak": "Gipfel", "hut": "Hütten", "pass": "Pässe"}}
 MOUNTAIN = "\u26f0\ufe0f"
+_LABELS = {label for labels in DESCRIPTION_LABELS.values() for label in labels.values()}
 
 
 def is_our_line(line: str) -> bool:
     s = line.strip().lstrip("\u26f0\ufe0f").strip()
-    return line.strip().startswith("\u26f0") and any(s.startswith(f"{label}:") for label in DESCRIPTION_LABELS.values())
+    return line.strip().startswith("\u26f0") and any(s.startswith(f"{label}:") for label in _LABELS)
 
 
-def description_line(visits: list[dict], description: str | None, language: str) -> str | None:
-    """None when there are no summits, or when the description names them all already (another tool's lines)."""
-    peaks = [v for v in visits if v["kind"] == "peak"]
-    if not peaks:
+def description_line(visits: list[dict], description: str | None, language: str,
+                     kinds: tuple[str, ...] = ("peak",)) -> str | None:
+    """None when there is nothing of these kinds, or when the description names it all already
+    (another tool's lines). Summits, huts, passes – each part only when there were some."""
+    named = [v for v in visits if v["kind"] in kinds]
+    if not named:
         return None
     rest = "\n".join(line for line in (description or "").split("\n") if not is_our_line(line))
-    if all(v["name"] in rest for v in peaks):
+    if all(v["name"] in rest for v in named):
         return None
-    return f"{MOUNTAIN} {DESCRIPTION_LABELS.get(language, 'Summits')}: {text(peaks, ('peak',))}"
+    labels = DESCRIPTION_LABELS.get(language, DESCRIPTION_LABELS["en"])
+    parts = [f"{labels[k]}: {text(named, (k,))}" for k in ("peak", "hut", "pass") if k in kinds and text(named, (k,))]
+    return f"{MOUNTAIN} " + " · ".join(parts)
 
 
 def our_line(description: str | None) -> str | None:

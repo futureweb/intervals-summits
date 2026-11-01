@@ -12,7 +12,7 @@ from collections import Counter
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from . import __version__, page
+from . import __version__, charts, page
 from . import fields as F
 from .config import Settings, load
 from .intervals import IntervalsClient
@@ -37,17 +37,22 @@ def context(settings: Settings) -> Context:
 
 
 def write_page(ctx: Context) -> None:
-    size = page.write(ctx.store, ctx.settings.page_file, ctx.settings.language, ctx.settings.page_title)
+    s = ctx.settings
+    size = page.write(ctx.store, s.page_file, s.page_lang, s.page_title, tiles=s.map_tiles, wanted=s.collections)
     ctx.counts["page_kb"] = size // 1024
 
 
 def ensure_fields(ctx: Context) -> None:
-    """Create missing fields – checked once a day (the list of custom items is not small)."""
-    key = ",".join(ctx.settings.fields)
+    """Create missing fields, and the charts – checked once a day (the list of custom items is not small)."""
+    key = ",".join(ctx.settings.fields) + (" charts" if ctx.settings.charts else "")
     if ctx.store.get("fields_checked") == f"{date.today()} {key}":
         return
     for code in F.ensure(ctx.iv, ctx.settings.fields, ctx.settings.language, True)["missing"]:
         ctx.counts[f"field_created_{code}"] += 1
+    if ctx.settings.charts:
+        made = charts.setup(ctx.iv, apply=True)
+        ctx.counts["charts_created"] += len(made["created"])
+        ctx.counts["charts_updated"] += len(made["updated"])
     ctx.store.put("fields_checked", f"{date.today()} {key}")
 
 
@@ -79,7 +84,8 @@ def cmd_backfill(ctx: Context, args, recompute: bool = False) -> int:
 
 def cmd_page(ctx: Context, args) -> int:
     path = Path(args.out) if args.out else ctx.settings.page_file
-    size = page.write(ctx.store, path, args.language or ctx.settings.language, ctx.settings.page_title)
+    s = ctx.settings
+    size = page.write(ctx.store, path, args.language or s.page_lang, s.page_title, tiles=s.map_tiles, wanted=s.collections)
     print(f"{path}: {size // 1024} KB")
     return 0
 
@@ -116,6 +122,11 @@ def cmd_status(ctx: Context, args) -> int:
     return 0
 
 
+def cmd_charts(ctx: Context, args) -> int:
+    print(json.dumps(charts.setup(ctx.iv, apply=args.apply), indent=2, ensure_ascii=False))
+    return 0
+
+
 def cmd_fields(ctx: Context, args) -> int:
     print(json.dumps(F.ensure(ctx.iv, ctx.settings.fields, ctx.settings.language, args.apply), indent=2))
     return 0
@@ -134,7 +145,8 @@ def serve(settings: Settings, host: str, port: int, wake: threading.Event | None
                 return
             store = Store(settings.db_file, settings.tracks_dir)
             try:
-                body = page.render(store, settings.language, settings.page_title).encode("utf-8")
+                body = page.render(store, settings.page_lang, settings.page_title, tiles=settings.map_tiles,
+                                   wanted=settings.collections).encode("utf-8")
             finally:
                 store.close()
             self.send_response(200)
@@ -255,6 +267,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--fields", action="store_true", help="also ask Intervals which fields exist")
     p = sub.add_parser("fields", help="create the activity fields that are missing")
     p.add_argument("--apply", action="store_true")
+    p = sub.add_parser("charts", help="ready-made Intervals charts: summits per week and month (private)")
+    p.add_argument("--apply", action="store_true")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
                         datefmt="%Y-%m-%d %H:%M:%S", stream=sys.stderr)
@@ -265,6 +279,6 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_sync(ctx, args)
         if args.cmd in ("backfill", "recompute"):
             return cmd_backfill(ctx, args, recompute=args.cmd == "recompute")
-        return {"page": cmd_page, "status": cmd_status, "fields": cmd_fields, "run": cmd_run, "ui": cmd_ui}[args.cmd](ctx, args)
+        return {"page": cmd_page, "status": cmd_status, "fields": cmd_fields, "charts": cmd_charts, "run": cmd_run, "ui": cmd_ui}[args.cmd](ctx, args)
     finally:
         ctx.store.close()

@@ -83,3 +83,21 @@ def test_description_line():
     # a hand-edited line is kept, our own is updated
     assert F.decide("description", line, "⛰️ Summits: typed", json.dumps("⛰️ Summits: old")) == "kept"
     assert F.decide("description", line, "⛰️ Summits: old", json.dumps("⛰️ Summits: old")) == "write"
+
+
+def test_description_line_with_huts_and_passes_only_when_there_were_some():
+    visits = [{"name": "Maukspitze", "kind": "peak", "ele": 2231.0}, {"name": "Ackerlhütte", "kind": "hut", "ele": 1455.0},
+              {"name": "Stripsenjoch", "kind": "pass", "ele": 1577.0}]
+    kinds = F.line_kinds(("Summits", "Huts", "Passes"))
+    assert kinds == ("peak", "hut", "pass") and F.line_kinds(("Summits", "HutsPasses")) == kinds
+    assert F.line_kinds(("Summits",)) == ("peak",)
+    line = F.description_line(visits, "", "en", kinds)
+    assert line == "⛰️ Summits: Maukspitze (2231 m) · Huts: Ackerlhütte (1455 m) · Passes: Stripsenjoch (1577 m)"
+    assert F.description_line(visits[1:2], "", "de", kinds) == "⛰️ Hütten: Ackerlhütte (1455 m)"   # a hut alone
+    assert F.description_line(visits, "", "en") == "⛰️ Summits: Maukspitze (2231 m)"           # fields off: summits only
+    assert F.description_line(visits[1:], "", "en") is None                                    # no summit, fields off
+    # a line of either shape is ours: updated in place, never a second one
+    old = "Great day\n⛰️ Summits: Maukspitze (2231 m)"
+    assert F.with_line(old, line) == "Great day\n" + line and F.is_our_line("⛰️ Hütten: X") and F.is_our_line(line)
+    assert F.keeps_text(old, F.with_line(old, line))
+    assert F.wanted(visits, 2300, ("Huts", "Passes")) == {"Huts": "Ackerlhütte (1455 m)", "Passes": "Stripsenjoch (1577 m)"}

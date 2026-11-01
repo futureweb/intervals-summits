@@ -15,10 +15,14 @@ own GPS tracks with OpenStreetMap, plus your personal **summit log**.
   Two more fields: the number of summits, which you can chart per week, month or year, and the
   highest point of the activity.
 - **The summit log page:**
+  - a map of every summit, hut and pass you reached, each with your tours there;
   - your summits, huts and passes over time;
   - your top 10/20/50/100 (most visited or highest);
-  - a count per year;
-  - a searchable log, every entry linked to its activity in Intervals.
+  - a count per year, with the places that were new that year;
+  - collections, e.g. all 3000ers of Tirol, and how many of them you have been on;
+  - a searchable log, every entry linked to its activity in Intervals (and to Wikipedia, where
+    OpenStreetMap knows the article), first visits starred.
+- **Ready-made Intervals charts:** summits per week and per month, with the highest point of each day.
 - **It works with every activity that has a GPS track**, whatever it came from: Garmin, Wahoo, Coros,
   Suunto, Polar, a Strava import or an upload. Old ones too: one backfill matches your whole history.
 - It needs nothing but your Intervals API key.
@@ -62,8 +66,8 @@ again). An activity left with no summit at all keeps the values written before; 
 | `Summits` | text | `Maukspitze (2231 m), Ackerlspitze (2329 m)`: the summits in the order you reached them |
 | `SummitCount` | number, summed per day | how many summits; chart them per week, month or year |
 | `HighestPoint` | number, max per day | **only where empty.** Intervals fills it from a FIT file itself; for GPX/TCX and old activities the tool takes the highest point of the track |
-| `HutsPasses` | text | huts and passes. Off by default: `SUMMITS_FIELDS=…,HutsPasses` |
-| description | one line | optional, `SUMMITS_DESCRIPTION=true`: `⛰️ Summits: Maukspitze (2231 m), …`, **so Intervals' search finds them** (see below) |
+| `Huts`, `Passes` | text | huts and passes, in the order you reached them. Off by default: `SUMMITS_FIELDS=…,Huts,Passes` (`HutsPasses`, both in one field as in 0.1, still works) |
+| description | one line | optional, `SUMMITS_DESCRIPTION=true`: `⛰️ Summits: Maukspitze (2231 m), …`, **so Intervals' search finds them** (see below). With the huts and passes fields on, they join the line when there were some: `⛰️ Summits: … · Huts: Ackerlhütte (1455 m) · Passes: …` |
 
 The tool creates missing fields itself.
 - **Codes are the same for everyone**, so charts and scripts can be shared.
@@ -81,8 +85,10 @@ line, and leaves every other character as it is. If the description already name
 - **On the activity:** the fields show above the charts. Which fields show is chosen per sport, and
   they can go into the summary layout.
 - **Filters:** in the activity list and on the totals page, filters can use custom fields, e.g. `SummitCount` at least 1 for all your summit days.
-- **Fitness charts:** `SummitCount` (summed per day) and `HighestPoint` (maximum per day) can be
-  plotted; on a weekly or monthly scale you get summits per week or month.
+- **Fitness charts:** with writing on, the tool makes two private charts, *Intervals Summits: per
+  week* and *per month* (summits per week or month, the highest point of each day), and keeps them up
+  to date; `SUMMITS_CHARTS=false` leaves them out, `charts --apply` makes them now. Charts of your own
+  are never touched.
 - **Search:** Intervals' search looks at names and descriptions, not at custom fields. Turn on
   `SUMMITS_DESCRIPTION=true`, and searching a summit finds every activity that reached it, also
   where it is not in the name:
@@ -158,10 +164,30 @@ left alone, so one `BRIDGE_NOTIFY_URL` list can serve summits and your own tools
 | `page [--out FILE] [--language de]` | The summit log as one self-contained HTML file, to keep or share |
 | `status [--check] [--fields]` | Counts and the last sync; `--check` for health checks (exit 1 when no sync came for long) |
 | `fields [--apply]` | Create the activity fields now |
+| `charts [--apply]` | Create or update the two Intervals charts now (otherwise done with the daily field check) |
 
 Without `--apply`, nothing is written to Intervals. The summit log page still fills.
 
 `python examples/demo.py demo.html` builds a summit log with made-up data (the screenshot above).
+
+### The map and collections
+
+The map needs the internet: it loads [Leaflet](https://leafletjs.com) and the map tiles once you
+scroll to it; everything else on the page works offline. The tiles come from
+[OpenTopoMap](https://opentopomap.org) (`SUMMITS_MAP_TILES` for another server, `off` for no map).
+
+A **collection** is every named summit of an area, above a height if you like:
+`SUMMITS_COLLECTIONS="Tirol 3000ers=r52343>=3000; Kaisergebirge=r2115422"`. The area is its name in
+OpenStreetMap, or `r<relation id>` when a name is ambiguous (find the id on openstreetmap.org). Each
+collection is read once (one Overpass query) and again after half a year; the page shows how many of
+its summits you have been on, and the map the ones still missing.
+
+### The page on a web server
+
+`SUMMITS_PAGE_FILE=/var/www/example/summits/index.html` writes the page there after every sync
+instead of into the data folder, readable by the web server; protect the folder (basic auth, say), it
+shows where you go. `SUMMITS_PAGE_LANGUAGE=de` gives the page its own language when the fields keep
+another.
 
 ## Settings
 
@@ -172,7 +198,7 @@ Without `--apply`, nothing is written to Intervals. The summit log page still fi
 | `SUMMITS_DATA_DIR` | `~/GarminBridge/summits` next to a bridge, else `~/IntervalsSummits` | database, tracks, `summits.html` |
 | `SUMMITS_LANGUAGE` | `en` | `en` or `de`: names of new fields, the page, the description line |
 | `SUMMITS_NAME_LANGUAGE` | – | e.g. `en`: OpenStreetMap's `name:en` where there is one, else the local name |
-| `SUMMITS_FIELDS` | `Summits,SummitCount,HighestPoint` | add `HutsPasses` for huts and passes |
+| `SUMMITS_FIELDS` | `Summits,SummitCount,HighestPoint` | add `Huts,Passes` for huts and passes (fields and description line) |
 | `SUMMITS_DESCRIPTION` | `false` | `true`: the `⛰️ Summits:` line in the description (searchable) |
 | `SUMMITS_TYPES` | every outdoor type | only these activity types, e.g. `Hike,BackcountrySki` |
 | `SUMMITS_PEAK_RADIUS` | `100` | metres (10–200): how close the track must come to a summit |
@@ -184,6 +210,11 @@ Without `--apply`, nothing is written to Intervals. The summit log page still fi
 | `SUMMITS_KEEP_TRACKS` | `true` | keep the tracks: `recompute` without downloading them again (~20 KB per activity) |
 | `SUMMITS_OVERPASS_URL` | overpass-api.de | another Overpass server |
 | `SUMMITS_PAGE_TITLE` | Summit log / Gipfelbuch | |
+| `SUMMITS_PAGE_FILE` | `summits.html` in the data folder | where the page goes, e.g. a web server's folder |
+| `SUMMITS_PAGE_LANGUAGE` | `SUMMITS_LANGUAGE` | `en` or `de` for the page alone |
+| `SUMMITS_MAP_TILES`, `SUMMITS_MAP_ATTRIBUTION` | OpenTopoMap | another tile server (`https://…/{z}/{x}/{y}.png`) and its credit line; `off`: no map |
+| `SUMMITS_COLLECTIONS` | – | `Label=Area>=height; …`, see [The map and collections](#the-map-and-collections) |
+| `SUMMITS_CHARTS` | `true` | `false`: no Intervals charts |
 
 ## Fair to Intervals and OpenStreetMap
 
@@ -198,7 +229,9 @@ Without `--apply`, nothing is written to Intervals. The summit log page still fi
 ## Privacy
 
 Your data stays on your computer and in your Intervals account. Overpass learns which 0.2° cells
-(about 22 × 15 km) you need, never a track or an activity. Details: [PRIVACY.md](PRIVACY.md).
+(about 22 × 15 km) you need, and the areas of your collections, never a track or an activity. When
+you open the map, your browser loads Leaflet from cdnjs and the tiles of the part you look at from
+the tile server. Details: [PRIVACY.md](PRIVACY.md).
 
 ## Licence
 

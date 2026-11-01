@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0 – 2026-11-01
+
+- **Huts and passes in fields of their own:** `Huts` and `Passes` (`SUMMITS_FIELDS=…,Huts,Passes`; in
+  Home Assistant *Huts and passes*). With them on, the description line names them too, and only when
+  there were some: `⛰️ Summits: … · Huts: … · Passes: …`. `HutsPasses` from 0.1 still works.
+- **A map in the summit log:** every summit, hut and pass you reached, sized by visits, with your tours
+  there and the Wikipedia link; OpenTopoMap tiles (`SUMMITS_MAP_TILES`). Loaded once it is in view; the
+  rest of the page still works offline.
+- **Wikipedia links** in the log and on the map, where OpenStreetMap has the article. The cached
+  OpenStreetMap cells are read once more for them.
+- **First visits:** starred in the log, "new in <year>" among the figures, the new places per year
+  under the year chart.
+- **Collections** (`SUMMITS_COLLECTIONS`): all summits of an area above a height, e.g. the 3000ers of
+  Tirol; how many you have been on, the list, and the missing ones on the map.
+- **Intervals charts:** *Intervals Summits: per week* and *per month* (summits, highest point of each
+  day), made with the fields and kept up to date (`SUMMITS_CHARTS`, `charts --apply`).
+- **The page on a web server:** `SUMMITS_PAGE_FILE` writes it there, readable by the server;
+  `SUMMITS_PAGE_LANGUAGE` gives it a language of its own.
+
 ## 0.1.1 – 2026-11-01
 
 - **Only activity notes start a sync.** garmin-intervals-bridge 0.12.10 also reports new wellness data

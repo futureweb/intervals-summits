@@ -22,6 +22,13 @@ from .sync import Context, backfill, sync
 
 log = logging.getLogger("intervals_summits")
 
+# garmin-intervals-bridge (BRIDGE_NOTIFY_URL) can tell `run --ui` about new activities with a POST /sync
+QUIET_MINUTES = 180         # while it does, look on our own only this often (in case the bridge stops)
+NOTIFIED_DAYS = 14          # ... as long as its last note is this recent
+RECHECK_MINUTES = 10        # a reported activity without a track yet: ask once more this soon
+NOTE_DELAY = 5              # seconds: notes in quick succession make one sync
+MIN_GAP_SECONDS = 60        # and at most one sync a minute
+
 
 def context(settings: Settings) -> Context:
     store = Store(settings.db_file, settings.tracks_dir)
@@ -77,13 +84,21 @@ def cmd_page(ctx: Context, args) -> int:
     return 0
 
 
+def poll_minutes(ctx: Context, now: datetime | None = None) -> int:
+    """How often to look on our own: SUMMITS_INTERVAL_MINUTES, or every 3 hours while the bridge reports."""
+    told = ctx.store.get("notified_at")
+    if told and (now or datetime.now()) - datetime.fromisoformat(told) <= timedelta(days=NOTIFIED_DAYS):
+        return max(ctx.settings.interval_minutes, QUIET_MINUTES)
+    return ctx.settings.interval_minutes
+
+
 def healthy(ctx: Context, now: datetime | None = None) -> tuple[bool, str]:
     """No request to anyone: is the last successful sync recent enough?"""
     last = ctx.store.get("last_sync_at")
     if not last:
         return True, "no sync yet"
     age = ((now or datetime.now()) - datetime.fromisoformat(last)).total_seconds() / 60
-    limit = max(60, 3 * ctx.settings.interval_minutes)
+    limit = max(60, 3 * poll_minutes(ctx, now))
     return age <= limit, f"last sync {age:.0f} minutes ago"
 
 
@@ -93,7 +108,8 @@ def cmd_status(ctx: Context, args) -> int:
         print(("healthy: " if ok else "unhealthy: ") + text)
         return 0 if ok else 1
     out = {"version": __version__, "data_dir": str(ctx.settings.data_dir), "fields": list(ctx.settings.fields),
-           "language": ctx.settings.language, "last_sync": ctx.store.get("last_sync_at"), **ctx.store.counts()}
+           "language": ctx.settings.language, "last_sync": ctx.store.get("last_sync_at"),
+           "last_bridge_note": ctx.store.get("notified_at"), **ctx.store.counts()}
     if args.fields:
         out["intervals_fields"] = F.ensure(ctx.iv, ctx.settings.fields, ctx.settings.language, False)
     print(json.dumps(out, ensure_ascii=False, indent=2))
@@ -105,8 +121,10 @@ def cmd_fields(ctx: Context, args) -> int:
     return 0
 
 
-def serve(settings: Settings, host: str, port: int) -> http.server.ThreadingHTTPServer:
-    """The summit log, rendered fresh from the database for every request (read only)."""
+def serve(settings: Settings, host: str, port: int, wake: threading.Event | None = None) -> http.server.ThreadingHTTPServer:
+    """The summit log, rendered fresh from the database for every request (read only). With `wake`
+    (from `run`) also POST /sync: new activities in Intervals, sync now. It takes no data, only the
+    note; the run loop keeps it to one sync a minute."""
 
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):  # noqa: N802
@@ -122,6 +140,24 @@ def serve(settings: Settings, host: str, port: int) -> http.server.ThreadingHTTP
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_POST(self):  # noqa: N802
+            if wake is None or self.path.split("?")[0].rstrip("/") != "/sync":
+                self.send_error(404)
+                return
+            try:
+                length = min(max(int(self.headers.get("Content-Length") or 0), 0), 65536)
+                who = str(json.loads(self.rfile.read(length) or b"{}").get("source") or "")
+            except (ValueError, AttributeError):
+                who = ""
+            log.info("%s reports new activities: a sync follows", "".join(c for c in who[:60] if c.isprintable()) or "Someone")
+            wake.set()
+            body = b'{"ok": true}'
+            self.send_response(202)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
 
@@ -143,19 +179,30 @@ def cmd_ui(ctx: Context, args) -> int:
 
 def cmd_run(ctx: Context, args) -> int:
     """Keep running: a sync every SUMMITS_INTERVAL_MINUTES, the page after each (and with --ui on the web)."""
-    minutes = ctx.settings.interval_minutes
+    wake = threading.Event()
     if args.ui:
-        server = serve(ctx.settings, args.host, args.port)
+        server = serve(ctx.settings, args.host, args.port, wake)
         threading.Thread(target=server.serve_forever, daemon=True).start()
-        log.info("Summit log on http://%s:%d/", args.host, args.port)
-    log.info("intervals-summits %s: a sync every %d minutes%s", __version__, minutes,
+        log.info("Summit log on http://%s:%d/ (POST /sync there: new activities, sync now)", args.host, args.port)
+    log.info("intervals-summits %s: a sync every %d minutes%s", __version__, poll_minutes(ctx),
              "" if args.apply else " – a dry run: nothing is written to Intervals until --apply")
-    while True:
+    run_loop(ctx, apply=args.apply, wake=wake)
+    return 0
+
+
+def run_loop(ctx: Context, *, apply: bool, wake: threading.Event, iterations: int | None = None,
+             sleep=time.sleep) -> None:
+    told, count = False, 0
+    while iterations is None or count < iterations:
+        count += 1
+        started = time.monotonic()
         ctx.counts = Counter()
         try:
-            if args.apply:
+            if told:
+                ctx.store.put("notified_at", datetime.now().isoformat(timespec="seconds"))
+            if apply:
                 ensure_fields(ctx)
-            sync(ctx, apply=args.apply)
+            sync(ctx, apply=apply)
             write_page(ctx)
             done = {k: v for k, v in ctx.counts.items() if k in ("matched", "with_summits", "activities_to_write",
                                                                   "activities_written", "failed") and v}
@@ -163,7 +210,15 @@ def cmd_run(ctx: Context, args) -> int:
                 log.info("Sync: %s", done)
         except Exception as exc:  # noqa: BLE001 – keep running; the next pass tries again
             log.warning("Sync failed: %s", exc)
-        time.sleep(minutes * 60)
+        if iterations is not None and count >= iterations:
+            return
+        wait = poll_minutes(ctx) * 60
+        if told and ctx.counts["no_gps"]:
+            wait = min(wait, RECHECK_MINUTES * 60)       # Intervals may not have read its track yet
+        told = wake.wait(wait)
+        if told:
+            sleep(max(NOTE_DELAY, started + MIN_GAP_SECONDS - time.monotonic()))
+            wake.clear()                                 # notes until now: this one sync covers them
 
 
 def main(argv: list[str] | None = None) -> int:

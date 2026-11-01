@@ -17,6 +17,18 @@ configuration:
   types:
     name: Only these activity types
     description: Comma-separated, e.g. Hike,BackcountrySki. Empty = every outdoor type.
+  peak_radius:
+    name: Summit radius (m)
+    description: How close the track must come to a summit, 10–200 m. Empty = 100.
+  peak_below:
+    name: Below the summit (m)
+    description: How far below the summit the track may be there, 0–500 m. Empty = 80.
+  hut_radius:
+    name: Hut radius (m)
+    description: 10–200 m. Empty = 60.
+  pass_radius:
+    name: Pass radius (m)
+    description: 10–200 m. Empty = 60.
   backfill_from:
     name: Backfill from (YYYY-MM-DD)
     description: Goes through your past activities from this date once, at the next start (and once more when writing is switched on).

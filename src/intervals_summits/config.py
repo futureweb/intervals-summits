@@ -59,6 +59,19 @@ def _bool(value: str | None, default: bool) -> bool:
     return default if value in (None, "") else value.strip().lower() in ("1", "true", "yes", "on")
 
 
+def _metres(env: dict[str, str], key: str, default: float, low: float, high: float) -> float:
+    value = env.get(key)
+    if value in (None, ""):
+        return default
+    try:
+        number = float(value)
+    except ValueError:
+        raise SystemExit(f"{key}: a number of metres, not {value!r}") from None
+    if not low <= number <= high:
+        raise SystemExit(f"{key}: {low:g} to {high:g} m")
+    return number
+
+
 @dataclass
 class Settings:
     api_key: str
@@ -120,5 +133,10 @@ def load(environ: dict[str, str] | None = None) -> Settings:
         interval_minutes=max(5, int(env.get("SUMMITS_INTERVAL_MINUTES") or 15)),
         keep_tracks=_bool(env.get("SUMMITS_KEEP_TRACKS"), True),
         description=_bool(env.get("SUMMITS_DESCRIPTION"), False),
+        # up to 200 m: a track point needs the neighbouring OpenStreetMap cell only within 0.004° of a border
+        peak_radius=_metres(env, "SUMMITS_PEAK_RADIUS", 100.0, 10, 200),
+        peak_below=_metres(env, "SUMMITS_PEAK_BELOW", 80.0, 0, 500),
+        hut_radius=_metres(env, "SUMMITS_HUT_RADIUS", 60.0, 10, 200),
+        pass_radius=_metres(env, "SUMMITS_PASS_RADIUS", 60.0, 10, 200),
         page_title=env.get("SUMMITS_PAGE_TITLE") or "",
     )

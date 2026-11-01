@@ -32,6 +32,13 @@ These rules were calibrated against peakproject's summit lines on 25 activities:
 were found. A summit that OpenStreetMap does not have, or has under another name, cannot be found.
 Improve the map, and `recompute` picks it up.
 
+**Stricter or more generous:** the four numbers can be set (`SUMMITS_PEAK_RADIUS`,
+`SUMMITS_PEAK_BELOW`, `SUMMITS_HUT_RADIUS`, `SUMMITS_PASS_RADIUS`, see [Settings](#settings)). For example
+`SUMMITS_PEAK_RADIUS=50` and `SUMMITS_PEAK_BELOW=30` count only summits you were really on. Best set
+them before the first backfill. Changed later, they apply to new activities at once, and
+`recompute --from 2010-01-01` applies them to your past (from the stored tracks, without downloading them
+again). An activity left with no summit at all keeps the values written before; clear those by hand.
+
 ## What lands in Intervals
 
 ![The fields on an activity page in Intervals](docs/images/intervals-activity.png)
@@ -102,6 +109,23 @@ Settings come from the environment, else from `./.env`, `~/IntervalsSummits/.env
 Instead of keeping it running, `intervals-summits sync --apply` once a day (Task Scheduler, cron)
 works as well. It catches up on the days since its last run.
 
+### Next to garmin-intervals-bridge: the bridge says when there is something new
+
+The bridge looks for new activities in Intervals every few minutes anyway, whatever their source. From
+version 0.12.9 on it passes that on: set `BRIDGE_NOTIFY_URL` in the bridge's settings, and summits
+syncs right after the bridge instead of looking every 15 minutes itself. On its own it then looks only
+every 3 hours, in case the bridge stops. This needs `run --ui`, as in the Docker and Home Assistant
+setups.
+
+| The bridge runs … | `BRIDGE_NOTIFY_URL` |
+|---|---|
+| on the same computer | `http://127.0.0.1:8766/sync` |
+| in the same `compose.yaml` | `http://summits:8766/sync` |
+| as a Home Assistant app | `http://<hostname>:8766/sync`, the hostname is on the *Info* tab of the Intervals Summits app |
+
+`POST /sync` only says "something is new": it takes no data, and summits keeps it to one sync a
+minute. `intervals-summits status` shows the bridge's last note.
+
 ### Commands
 
 | Command | |
@@ -109,7 +133,7 @@ works as well. It catches up on the days since its last run.
 | `sync [--apply] [--force]` | The recent days; after a pause it reads back to the last run (at most 14 days) |
 | `backfill --from DATE [--to DATE] [--apply]` | The past: tracks first, then OpenStreetMap for all of them at once, then matching and writing. Resumable. |
 | `recompute --from DATE [--apply]` | Match again, e.g. after OpenStreetMap got better. Writes only differences. |
-| `run [--apply] [--ui] [--host H] [--port 8766]` | Keeps running: a sync every 15 minutes, optionally with the summit log page |
+| `run [--apply] [--ui] [--host H] [--port 8766]` | Keeps running: a sync every 15 minutes (every 3 hours while the bridge reports new activities), optionally with the summit log page |
 | `ui [--host H] [--port 8766]` | Only the summit log page |
 | `page [--out FILE] [--language de]` | The summit log as one self-contained HTML file, to keep or share |
 | `status [--check] [--fields]` | Counts and the last sync; `--check` for health checks (exit 1 when no sync came for long) |
@@ -131,6 +155,10 @@ Without `--apply`, nothing is written to Intervals. The summit log page still fi
 | `SUMMITS_FIELDS` | `Summits,SummitCount,HighestPoint` | add `HutsPasses` for huts and passes |
 | `SUMMITS_DESCRIPTION` | `false` | `true`: the `⛰️ Summits:` line in the description (searchable) |
 | `SUMMITS_TYPES` | every outdoor type | only these activity types, e.g. `Hike,BackcountrySki` |
+| `SUMMITS_PEAK_RADIUS` | `100` | metres (10–200): how close the track must come to a summit |
+| `SUMMITS_PEAK_BELOW` | `80` | metres (0–500): how far below the summit the track may be there |
+| `SUMMITS_HUT_RADIUS` | `60` | metres (10–200) for huts |
+| `SUMMITS_PASS_RADIUS` | `60` | metres (10–200) for passes |
 | `SUMMITS_LOOKBACK_DAYS` | `3` | how far `sync` looks back |
 | `SUMMITS_INTERVAL_MINUTES` | `15` | `run`: minutes between syncs |
 | `SUMMITS_KEEP_TRACKS` | `true` | keep the tracks: `recompute` without downloading them again (~20 KB per activity) |

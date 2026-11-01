@@ -13,4 +13,12 @@ shows your **summit log** in the sidebar.
 
 It looks for new activities every 15 minutes. Values you edit by hand in Intervals stay as you left them.
 
+**Next to the Garmin bridge app** (0.12.9 or newer): enter `http://<hostname>:8766/sync` as the
+bridge's *Notify URL*, with the hostname from this app's *Info* tab. The bridge then says when there is
+something new, and this app looks on its own only every 3 hours.
+
+**Stricter or more generous:** the optional radius settings (summit, below the summit, hut, pass) change
+how close the track must come. Best set them before the first backfill: they apply to every activity
+matched after the change.
+
 Everything else: https://github.com/futureweb/intervals-summits

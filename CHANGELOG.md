@@ -16,6 +16,10 @@ First release.
   The description is read again right before writing; the tool adds or updates its own line only, the
   rest stays character for character.
 - **Your edits stay:** only values the tool wrote itself are ever updated; `--force` overrides.
+- **The rules can be set:** `SUMMITS_PEAK_RADIUS`, `SUMMITS_PEAK_BELOW`, `SUMMITS_HUT_RADIUS`,
+  `SUMMITS_PASS_RADIUS` (also in Home Assistant); `recompute` applies new ones to the past.
+- **Next to garmin-intervals-bridge 0.12.9+:** the bridge says when there are new activities
+  (`BRIDGE_NOTIFY_URL` → `POST /sync`); summits syncs at once and looks on its own only every 3 hours.
 - **Summit log page:** timeline with hover, pin and link to the activity; top 10/20/50/100 by visits or
   height; per year; searchable log. English and German, light and dark, one self-contained file
   (`page`), or served (`ui`, `run --ui`).

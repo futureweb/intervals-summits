@@ -27,4 +27,8 @@ schema:
   description_line: bool
   huts_passes: bool
   types: str?
+  peak_radius: int(10,200)?
+  peak_below: int(0,500)?
+  hut_radius: int(10,200)?
+  pass_radius: int(10,200)?
   backfill_from: match(^\d{4}-\d{2}-\d{2}$)?

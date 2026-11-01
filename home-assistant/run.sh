@@ -15,6 +15,10 @@ if [ "$(opt huts_passes)" = true ]; then FIELDS="$FIELDS,HutsPasses"; fi
 export SUMMITS_FIELDS="$FIELDS"
 TYPES="$(opt types)"
 if [ -n "$TYPES" ]; then export SUMMITS_TYPES="$TYPES"; fi
+for RULE in peak_radius peak_below hut_radius pass_radius; do
+    VALUE="$(opt $RULE)"
+    if [ -n "$VALUE" ]; then export "SUMMITS_$(echo $RULE | tr a-z A-Z)=$VALUE"; fi
+done
 APPLY=""
 if [ "$(opt write_to_intervals)" = true ]; then APPLY="--apply"; fi
 # The past, once per date (and once more when writing gets switched on)

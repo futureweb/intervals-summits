@@ -31,4 +31,5 @@ services:
       retries: 3
 
   # Next to garmin-intervals-bridge: put this service into the bridge's compose.yaml and point
-  # env_file at the bridge's .env – the same INTERVALS_API_KEY works for both.
+  # env_file at the bridge's .env – the same INTERVALS_API_KEY works for both. With
+  # BRIDGE_NOTIFY_URL=http://summits:8766/sync there, the bridge says when there is something new.

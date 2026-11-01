@@ -206,6 +206,11 @@ def sync(ctx: Context, *, apply: bool, force: bool = False, today: date | None =
     """The recent days; after a pause back to the last run (at most catchup_days)."""
     today = today or date.today()
     s = ctx.settings
+    rules = f"{ctx.rules.peak_radius:g}/{ctx.rules.peak_below:g}/{ctx.rules.hut_radius:g}/{ctx.rules.pass_radius:g}"
+    if ctx.store.get("rules") not in (None, rules):
+        log.warning("The matching rules changed (%s m): new activities get them; for earlier ones run "
+                    "`recompute --from <date>`", rules)
+    ctx.store.put("rules", rules)
     oldest = today - timedelta(days=s.lookback_days)
     last = ctx.store.get("last_sync")
     if last:

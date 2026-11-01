@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 – 2026-11-01
+
+- **Neighbouring summits:** standing on a summit no longer counts the one next to it, like the
+  Kapuzenturm 94 m from the Ellmauer Halt. When the track, at its closest to a summit, was more than
+  25 m nearer to another summit it reached, only that one counts; twin summits closer together than
+  that both count. Past activities: `recompute --from 2010-01-01 --apply`.
+
 ## 0.2.1 – 2026-11-01
 
 - **A height for every place:** where OpenStreetMap has none, the tool takes your track's altitude at

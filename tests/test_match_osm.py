@@ -33,6 +33,18 @@ def test_order_dedup_and_language():
     assert visits(t, [PEAK], language="en")[0]["name"] == "Gscheuer Head"
 
 
+def test_on_a_summit_its_neighbour_does_not_count():
+    halt = dict(PEAK, osm="node/4", name="Ellmauer Halt", ele=2342.0)
+    tower = dict(PEAK, osm="node/5", name="Kapuzenturm", ele=2280.0, lon=12.4 + 94 / 75207)   # 94 m east
+    t = track([(47.499, 12.4), (47.5, 12.4)], [2200, 2335])
+    assert [v["name"] for v in visits(t, [halt, tower])] == ["Ellmauer Halt"]
+    t = track([(47.5, 12.4 + 94 / 75207), (47.5, 12.4)], [2280, 2335])                     # on both
+    assert [v["name"] for v in visits(t, [halt, tower])] == ["Kapuzenturm", "Ellmauer Halt"]
+    twin = dict(tower, lon=12.4 + 20 / 75207)                                                # 20 m apart: both
+    t = track([(47.499, 12.4), (47.5, 12.4)], [2200, 2335])
+    assert {v["name"] for v in visits(t, [halt, twin])} == {"Ellmauer Halt", "Kapuzenturm"}
+
+
 def test_peak_without_height_or_altitude_counts_by_distance():
     t = track([(47.4996, 12.4)], [None])
     found = visits(t, [dict(PEAK, ele=None)])

@@ -42,6 +42,9 @@ own GPS tracks with OpenStreetMap, plus your personal **summit log**.
 - **Peaks** (`natural=peak`/`volcano`): the track comes within **100 m**, *and* the track's altitude
   there is at most **80 m below** the summit. A path along the slope below a summit does not count;
   a gondola ride to the top does.
+- **Neighbouring summits:** standing on one summit does not count the one next to it. When the track,
+  at its closest to a summit, was more than 25 m nearer to another summit it reached, only that one
+  counts. Twin summits closer together than that both count.
 - **Huts** (`tourism=alpine_hut`/`wilderness_hut`) and **passes** (`mountain_pass=yes`,
   `natural=saddle`): within **60 m**.
 - One entry per name and activity, in the order of the track.

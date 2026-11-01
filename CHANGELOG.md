@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 – 2026-11-01
+
+- **Only activity notes start a sync.** garmin-intervals-bridge 0.12.10 also reports new wellness data
+  to `BRIDGE_NOTIFY_URL` (`"event": "wellness"`); summits takes those and leaves them alone. Notes
+  without an event (bridge 0.12.9) still count as new activities.
+
 ## 0.1.0 – 2026-11-01
 
 First release.

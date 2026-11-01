@@ -124,7 +124,8 @@ def cmd_fields(ctx: Context, args) -> int:
 def serve(settings: Settings, host: str, port: int, wake: threading.Event | None = None) -> http.server.ThreadingHTTPServer:
     """The summit log, rendered fresh from the database for every request (read only). With `wake`
     (from `run`) also POST /sync: new activities in Intervals, sync now. It takes no data, only the
-    note; the run loop keeps it to one sync a minute."""
+    note; the run loop keeps it to one sync a minute. Other events the bridge sends to the same
+    address (`"event": "wellness"`) are taken and left alone."""
 
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):  # noqa: N802
@@ -149,11 +150,14 @@ def serve(settings: Settings, host: str, port: int, wake: threading.Event | None
                 return
             try:
                 length = min(max(int(self.headers.get("Content-Length") or 0), 0), 65536)
-                who = str(json.loads(self.rfile.read(length) or b"{}").get("source") or "")
+                note = json.loads(self.rfile.read(length) or b"{}")
+                who, event = str(note.get("source") or ""), note.get("event", "activities")
             except (ValueError, AttributeError):
-                who = ""
-            log.info("%s reports new activities: a sync follows", "".join(c for c in who[:60] if c.isprintable()) or "Someone")
-            wake.set()
+                who, event = "", "activities"
+            if event == "activities":
+                log.info("%s reports new activities: a sync follows",
+                         "".join(c for c in who[:60] if c.isprintable()) or "Someone")
+                wake.set()
             body = b'{"ok": true}'
             self.send_response(202)
             self.send_header("Content-Type", "application/json")

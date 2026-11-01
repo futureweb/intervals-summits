@@ -141,7 +141,8 @@ setups.
 | as a Home Assistant app | `http://<hostname>:8766/sync`, the hostname is on the *Info* tab of the Intervals Summits app |
 
 `POST /sync` only says "something is new": it takes no data, and summits keeps it to one sync a
-minute. `intervals-summits status` shows the bridge's last note. On a Linux server with systemd,
+minute. The bridge's notes about new wellness data (0.12.10+, `"event": "wellness"`) are taken and
+left alone, so one `BRIDGE_NOTIFY_URL` list can serve summits and your own tools. `intervals-summits status` shows the bridge's last note. On a Linux server with systemd,
 [`deploy/intervals-summits-run.service`](deploy/intervals-summits-run.service) keeps it running
 (instead of the timer in `deploy/`).
 

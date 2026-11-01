@@ -50,6 +50,11 @@ def test_post_sync_wakes_the_run_loop(tmp_path):
         wake.clear()
         assert post(port, "/sync", json.dumps({"source": "garmin-intervals-bridge", "new": 1}).encode()) == 202
         assert wake.is_set()
+        wake.clear()
+        wellness = {"source": "garmin-intervals-bridge", "event": "wellness", "days": ["2026-11-01"]}
+        assert post(port, "/sync", json.dumps(wellness).encode()) == 202 and not wake.is_set()
+        activities = {"source": "garmin-intervals-bridge", "event": "activities", "new": 2}
+        assert post(port, "/sync", json.dumps(activities).encode()) == 202 and wake.is_set()
     finally:
         server.shutdown()
     plain = cli.serve(ctx.settings, "127.0.0.1", 0)            # `ui` alone has no loop to wake

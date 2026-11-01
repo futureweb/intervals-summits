@@ -119,7 +119,7 @@ def is_our_line(line: str) -> bool:
 
 
 def description_line(visits: list[dict], description: str | None, language: str) -> str | None:
-    """None when there are no summits, or when the description names them all already (peakproject's lines)."""
+    """None when there are no summits, or when the description names them all already (another tool's lines)."""
     peaks = [v for v in visits if v["kind"] == "peak"]
     if not peaks:
         return None

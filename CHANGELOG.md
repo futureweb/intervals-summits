@@ -12,7 +12,7 @@ First release.
 
 - **Finds summits, huts and passes** on every Intervals activity with a GPS track (any source).
   Uses OpenStreetMap: peaks within 100 m with the track at most 80 m below the top; huts and
-  passes within 60 m. Calibrated against peakproject (38 of 40 summits).
+  passes within 60 m. Calibrated against an independent summit log (38 of 40 summits).
 - **Writes activity fields**, created on first use:
   - `Summits` (text) and `SummitCount` (summed per day: summits per week, month or year in fitness charts);
   - `HighestPoint` only where empty (Intervals fills it from FIT files itself);

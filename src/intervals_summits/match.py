@@ -3,7 +3,7 @@
 A point counts as visited when the track's closest approach is within the radius of its kind; a
 peak only when the track also got up to it (track altitude there at least the peak's height minus
 `peak_below`), so a path traversing the slope below a summit does not count. Calibrated against
-peakproject's peak lines on 25 activities: 38 of 40 peaks found with 100 m / 80 m.
+an independent summit log of 25 activities: 38 of 40 peaks found with 100 m / 80 m.
 """
 from __future__ import annotations
 

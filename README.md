@@ -42,7 +42,7 @@ own GPS tracks with OpenStreetMap, plus your personal **summit log**.
   `natural=saddle`): within **60 m**.
 - One entry per name and activity, in the order of the track.
 
-These rules were calibrated against peakproject's summit lines on 25 activities: 38 of 40 summits
+These rules were calibrated against an independent summit log of 25 activities: 38 of 40 summits
 were found. A summit that OpenStreetMap does not have, or has under another name, cannot be found.
 Improve the map, and `recompute` picks it up.
 
@@ -74,7 +74,7 @@ The tool creates missing fields itself.
 `--force`). The tool only updates what it wrote itself. In the description it only ever touches its
 own line: it reads the description again right before writing, adds the line at the end after a blank
 line, and leaves every other character as it is. If the description already names all the summits
-(peakproject's lines, for example), it adds nothing.
+(another tool's lines, for example), it adds nothing.
 
 ### Seeing them in Intervals
 

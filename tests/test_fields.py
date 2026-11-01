@@ -77,7 +77,7 @@ def test_description_line():
     assert not F.keeps_text("Great day", "Great day\n\n" + line + "\nmore")
     assert not F.keeps_text("Great day", "Great day\n\nsomething else")
     assert not F.keeps_text(old, "Great day\n" + line)
-    # peakproject's lines already name the summit: nothing to add
+    # another tool's lines already name the summit: nothing to add
     assert F.description_line(peaks, "⛰️ Maukspitze (2231 m)", "en") is None
     assert F.description_line([peaks[1]], "", "en") is None
     # a hand-edited line is kept, our own is updated

@@ -34,6 +34,8 @@ Improve the map, and `recompute` picks it up.
 
 ## What lands in Intervals
 
+![The fields on an activity page in Intervals](docs/images/intervals-activity.png)
+
 | Field (code) | Type | Content |
 |---|---|---|
 | `Summits` | text | `Maukspitze (2231 m), Ackerlspitze (2329 m)`: the summits in the order you reached them |

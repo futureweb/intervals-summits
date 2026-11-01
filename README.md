@@ -49,8 +49,9 @@ The tool creates missing fields itself.
 
 **Your edits stay.** A value you typed, or another tool wrote, is never overwritten (unless
 `--force`). The tool only updates what it wrote itself. In the description it only ever touches its
-own line. If the description already names all the summits (peakproject's lines, for example), it
-adds nothing.
+own line: it reads the description again right before writing, adds the line at the end after a blank
+line, and leaves every other character as it is. If the description already names all the summits
+(peakproject's lines, for example), it adds nothing.
 
 ### Seeing them in Intervals
 

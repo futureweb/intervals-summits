@@ -66,6 +66,17 @@ def test_description_line():
     # our line replaced in place, the rest untouched; both languages are recognised
     old = "Great day\n⛰️ Gipfel: Ellmauer Halt (2344 m)\nwith friends"
     assert F.with_line(old, line) == "Great day\n⛰️ Summits: Maukspitze (2231 m)\nwith friends"
+    # the text stays exactly as it is: line ends, trailing newlines, Windows line breaks
+    assert F.with_line("Great day\n", line) == "Great day\n\n" + line
+    assert F.with_line("Great day\n\n", line) == "Great day\n\n" + line
+    assert F.with_line("Great day  \r\nok", line) == "Great day  \r\nok\n\n" + line
+    assert F.with_line("a\r\n⛰️ Summits: old\r\nb", line) == f"a\r\n{line}\r\nb"
+    for text in (None, "", "Great day", "Great day\n", "a\r\nb ", old, "a\n⛰️ Summits: x\nb\n⛰️ Summits: y"):
+        assert F.keeps_text(text, F.with_line(text, line))
+    assert not F.keeps_text("Great day", "Great dax\n\n" + line)
+    assert not F.keeps_text("Great day", "Great day\n\n" + line + "\nmore")
+    assert not F.keeps_text("Great day", "Great day\n\nsomething else")
+    assert not F.keeps_text(old, "Great day\n" + line)
     # peakproject's lines already name the summit: nothing to add
     assert F.description_line(peaks, "⛰️ Maukspitze (2231 m)", "en") is None
     assert F.description_line([peaks[1]], "", "en") is None

@@ -146,12 +146,10 @@ def process_window(ctx: Context, oldest: date, newest: date, *, apply: bool, for
             elif verdict == "same" and code not in last and code != "HighestPoint":
                 adopted[code] = value
         if s.description:
-            line = F.description_line(ctx.store.visits(a["id"]), a.get("description"), s.language)
-            verdict = F.decide("description", line, F.our_line(a.get("description")), last.get("description"), force)
+            verdict, text, line = description_write(ctx, a, last, force)
             ctx.counts[f"description_{verdict}"] += 1
             if verdict == "write":
-                writes["description"] = F.with_line(a.get("description"), line)
-                adopted_line = line
+                writes["description"], adopted_line = text, line
             elif verdict == "same" and "description" not in last:
                 adopted["description"] = line
         if adopted:
@@ -160,6 +158,10 @@ def process_window(ctx: Context, oldest: date, newest: date, *, apply: bool, for
             ctx.counts["activities_to_write"] += 1
             if apply:
                 try:
+                    if "description" in writes:
+                        adopted_line = fresh_description(ctx, a, writes, last, force)
+                    if not writes:
+                        continue
                     ctx.iv.update_activity(a["id"], writes)
                 except requests.RequestException as exc:     # the next run tries again
                     log.warning("Activity %s: not written (%s)", a["id"], exc)
@@ -168,6 +170,28 @@ def process_window(ctx: Context, oldest: date, newest: date, *, apply: bool, for
                 # for the description only our line counts as written, not the whole text
                 ctx.store.record_written(a["id"], {k: (adopted_line if k == "description" else v) for k, v in writes.items()})
                 ctx.counts["activities_written"] += 1
+
+
+def description_write(ctx: Context, a: dict, last: dict, force: bool) -> tuple[str, str | None, str | None]:
+    """The verdict, the whole new description (only when writing) and our line in it."""
+    line = F.description_line(ctx.store.visits(a["id"]), a.get("description"), ctx.settings.language)
+    verdict = F.decide("description", line, F.our_line(a.get("description")), last.get("description"), force)
+    return verdict, F.with_line(a.get("description"), line) if verdict == "write" else None, line
+
+
+def fresh_description(ctx: Context, a: dict, writes: dict, last: dict, force: bool) -> str | None:
+    """The description is the user's text: read it again right before writing and build on that, never
+    on the copy from the list. Leaves it out of the write when it changed so that nothing is to add."""
+    fresh = {**a, "description": ctx.iv.activity(a["id"]).get("description")}
+    verdict, text, line = description_write(ctx, fresh, last, force)
+    if verdict == "write" and F.keeps_text(fresh["description"], text):
+        writes["description"] = text
+        return line
+    if verdict == "write":
+        log.warning("Activity %s: description not written, it would not keep the text as it is", a["id"])
+    ctx.counts["description_changed_meanwhile"] += 1
+    del writes["description"]
+    return None
 
 
 def windows(oldest: date, newest: date, days: int = 366):

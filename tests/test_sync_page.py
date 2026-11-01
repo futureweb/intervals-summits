@@ -25,6 +25,9 @@ class FakeIntervals:
     def streams(self, aid, types):
         return self.streams_by_id[aid]
 
+    def activity(self, aid):
+        return dict(next(a for a in self.acts if a["id"] == aid))
+
     def update_activity(self, aid, values):
         self.puts.append((aid, values))
         for a in self.acts:
@@ -134,6 +137,28 @@ def test_description_line_is_opt_in_and_written_once(tmp_path):
     ctx.iv.puts.clear()
     sync(ctx, apply=True, today=date(2026, 10, 31))
     assert ctx.iv.puts == []
+
+
+def test_description_is_read_again_before_writing(tmp_path):
+    acts = [hike("i1", "2026-10-30", description="Nice day")]
+    ctx, _ = make(tmp_path, acts, {"i1": STREAMS}, description=True, fields=("Summits",))
+    listed = ctx.iv.activities
+    # the list has an old copy: the text was edited in between
+    ctx.iv.activities = lambda *a, **k: [{**x, "description": "Nice"} for x in listed(*a, **k)]
+    acts[0]["description"] = "Nice day\r\nwith Anna\n"
+    sync(ctx, apply=True, today=date(2026, 10, 31))
+    assert ctx.iv.puts == [("i1", {"Summits": "Gscheuerkopf (1180 m)",
+                                   "description": "Nice day\r\nwith Anna\n\n⛰️ Summits: Gscheuerkopf (1180 m)"})]
+    # in between the summits went into the text by hand: nothing to add, the field is still written
+    acts.append(hike("i2", "2026-10-29", description=""))
+    ctx.iv.streams_by_id["i2"] = STREAMS
+    ctx.iv.puts.clear()
+    ctx.iv.activities = listed
+    real = ctx.iv.activity
+    ctx.iv.activity = lambda aid: {**real(aid), "description": "Gscheuerkopf with Anna"}
+    sync(ctx, apply=True, today=date(2026, 10, 31))
+    assert ctx.iv.puts == [("i2", {"Summits": "Gscheuerkopf (1180 m)"})]
+    assert ctx.counts["description_changed_meanwhile"] == 1
 
 
 def test_page_renders_and_names_are_safe(tmp_path):

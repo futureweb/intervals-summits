@@ -85,6 +85,12 @@ class IntervalsClient:
             raise ValueError("Intervals streams API did not return a list")
         return result
 
+    def activity(self, activity_id: str) -> dict:
+        result = self._api("GET", f"/activity/{activity_id}")
+        if not isinstance(result, dict):
+            raise ValueError("Intervals activity API did not return an object")
+        return result
+
     def update_activity(self, activity_id: str, values: dict) -> Any:
         return self._api("PUT", f"/activity/{activity_id}", json=values)
 

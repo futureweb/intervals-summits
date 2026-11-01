@@ -13,6 +13,8 @@ First release.
   - `HutsPasses` optional.
 - **Optional description line** `⛰️ Summits: …` (`SUMMITS_DESCRIPTION=true`): Intervals' search looks at
   names and descriptions, not at custom fields. Skipped where the description names the summits already.
+  The description is read again right before writing; the tool adds or updates its own line only, the
+  rest stays character for character.
 - **Your edits stay:** only values the tool wrote itself are ever updated; `--force` overrides.
 - **Summit log page:** timeline with hover, pin and link to the activity; top 10/20/50/100 by visits or
   height; per year; searchable log. English and German, light and dark, one self-contained file

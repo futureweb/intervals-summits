@@ -134,11 +134,23 @@ def our_line(description: str | None) -> str | None:
 
 
 def with_line(description: str | None, line: str) -> str:
-    """The description with our line replaced, or appended after a blank line."""
-    lines = (description or "").split("\n")
+    """The description with our line replaced, or appended after a blank line: the rest stays exactly as it is."""
+    text = description or ""
+    lines = text.split("\n")
     at = [i for i, x in enumerate(lines) if is_our_line(x)]
     if not at:
-        base = (description or "").rstrip()
-        return f"{base}\n\n{line}" if base else line
-    lines[at[0]] = line
+        if not text.strip():
+            return line
+        return text + ("" if text.endswith("\n\n") else "\n" if text.endswith("\n") else "\n\n") + line
+    lines[at[0]] = line + ("\r" if lines[at[0]].endswith("\r") else "")
     return "\n".join(x for i, x in enumerate(lines) if i not in at[1:])
+
+
+def keeps_text(old: str | None, new: str) -> bool:
+    """The last check before a description is written: all of the user's text is still there, unchanged."""
+    old = old or ""
+    if our_line(old) is None:
+        start = old if old.strip() else ""
+        added = new[len(start):].strip()
+        return new.startswith(start) and "\n" not in added and is_our_line(added)
+    return [x for x in old.split("\n") if not is_our_line(x)] == [x for x in new.split("\n") if not is_our_line(x)]

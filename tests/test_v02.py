@@ -117,4 +117,6 @@ def test_the_page_can_go_to_a_web_folder_in_its_own_language_and_be_read_there(t
         page.write(store, s.page_file, s.page_lang)
     finally:
         os.umask(old)
-    assert oct(s.page_file.stat().st_mode & 0o777) == "0o640" and "Gipfelbuch" in s.page_file.read_text()
+    assert "Gipfelbuch" in s.page_file.read_text(encoding="utf-8")
+    if os.name != "nt":                                                   # Windows has no such modes
+        assert oct(s.page_file.stat().st_mode & 0o777) == "0o640"

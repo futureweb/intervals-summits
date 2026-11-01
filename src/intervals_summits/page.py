@@ -71,7 +71,7 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}.more{margin-top:10
 footer{color:var(--muted);font-size:12px;margin-top:8px}
 #map{height:440px;border-radius:8px;background:var(--line);color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center}
 .star{color:#d97706;margin-left:4px}a.w{font-size:11px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 3px;margin-left:6px;text-decoration:none}
-.cl{columns:2;font-size:14px;padding-left:18px;margin:6px 0}.cl li.got{font-weight:600}details summary{cursor:pointer;color:var(--muted);margin:2px 0 8px}
+.cl{columns:2;font-size:14px;list-style:none;padding-left:4px;margin:6px 0}.cl li{color:var(--muted)}.cl li.got{font-weight:600;color:var(--ink)}.cl b{color:var(--bar);font-weight:700}details summary{cursor:pointer;color:var(--muted);margin:2px 0 8px}
 .leaflet-popup-content{color:#1d2430}.leaflet-popup-content .m{color:#6b7480}.leaflet-popup-content a{color:#0b8fb3}
 @media (max-width:600px){.bars .b{grid-template-columns:110px 1fr 54px}td.hide,th.hide{display:none}}
 </style></head><body><main>
@@ -147,7 +147,7 @@ seg("topkind",Object.entries(T.kinds),"all",v=>{topkind=v;renderTop()});renderTo
 // collections: all summits of an area above a height, and how many of them you have been on
 (function(){if(!C.length)return;$("collcard").hidden=false;$("collh").textContent=T.colls;
  $("colls").innerHTML=C.map(c=>{const got=c.members.filter(m=>FIRST[m[0]]).length,all=c.members.length||1;
-  const list=c.members.slice().sort((a,b)=>(b[2]||0)-(a[2]||0)).map(m=>`<li class="${FIRST[m[0]]?"got":""}">${FIRST[m[0]]?"✓":"○"} ${esc(m[1])} <span class="m">${fmt(m[2])}${FIRST[m[0]]?" · "+de(FIRST[m[0]]):""}</span></li>`).join("");
+  const list=c.members.slice().sort((a,b)=>(b[2]||0)-(a[2]||0)).map(m=>`<li class="${FIRST[m[0]]?"got":""}">${FIRST[m[0]]?"<b>●</b>":"○"} ${esc(m[1])} <span class="m">${fmt(m[2])}${FIRST[m[0]]?" · "+de(FIRST[m[0]]):""}</span></li>`).join("");
   return `<div class="b"><div class="name">${esc(c.label)}</div><div class="track"><div class="fill" style="width:${(got/all*100).toFixed(1)}%"></div></div><div class="num">${got} / ${c.members.length}</div></div>`+
    `<details><summary>${esc(T.colllist)}</summary><ul class="cl">${list}</ul></details>`}).join("")})();
 // the map: loaded only once it comes into view (Leaflet and the tiles need the internet)

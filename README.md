@@ -172,6 +172,8 @@ Without `--apply`, nothing is written to Intervals. The summit log page still fi
 
 ### The map and collections
 
+![The map: every summit, hut and pass, with your tours there (demo data)](docs/images/summit-map.png)
+
 The map needs the internet: it loads [Leaflet](https://leafletjs.com) and the map tiles once you
 scroll to it; everything else on the page works offline. The tiles come from
 [OpenTopoMap](https://opentopomap.org) (`SUMMITS_MAP_TILES` for another server, `off` for no map).
@@ -181,6 +183,8 @@ A **collection** is every named summit of an area, above a height if you like:
 OpenStreetMap, or `r<relation id>` when a name is ambiguous (find the id on openstreetmap.org). Each
 collection is read once (one Overpass query) and again after half a year; the page shows how many of
 its summits you have been on, and the map the ones still missing.
+
+![A collection: how many of its summits you have been on (demo data)](docs/images/summit-collections.png)
 
 ### The page on a web server
 

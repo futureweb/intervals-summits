@@ -36,12 +36,12 @@ def atomic_write(path: Path, data: bytes, *, readable: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
     try:
-        if readable:
-            mask = os.umask(0)
-            os.umask(mask)
-            os.fchmod(fd, 0o666 & ~mask)
         with os.fdopen(fd, "wb") as f:
             f.write(data)
+        if readable:                                   # after closing: os.fchmod is not there on Windows
+            mask = os.umask(0)
+            os.umask(mask)
+            os.chmod(tmp, 0o666 & ~mask)
         os.replace(tmp, path)
     except BaseException:
         Path(tmp).unlink(missing_ok=True)
